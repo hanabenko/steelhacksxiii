@@ -1,0 +1,216 @@
+{
+  "schema_version": 1,
+  "sources": [
+    {
+      "id": "wprdc_crashes_cumulative_2004_2024",
+      "enabled": true,
+      "role": "baseline_safety",
+      "publisher": "Allegheny County / PennDOT",
+      "dataset": "Allegheny County Crash Data",
+      "landing_page": "https://data.wprdc.org/dataset/allegheny-county-crash-data",
+      "resource_id": "2c13021f-74a9-4289-a1e5-fe0472c89881",
+      "url": "https://data.wprdc.org/datastore/dump/2c13021f-74a9-4289-a1e5-fe0472c89881",
+      "path": "raw/wprdc/crashes/cumulative_2004_2024.csv",
+      "format": "csv",
+      "license": "CC0",
+      "temporal_coverage": "2004-2024",
+      "known_limitations": [
+        "Exact crash dates are suppressed by PennDOT.",
+        "Schema changes across years.",
+        "This cumulative resource does not yet include 2025."
+      ]
+    },
+    {
+      "id": "wprdc_crashes_2025",
+      "enabled": true,
+      "role": "baseline_safety",
+      "publisher": "Allegheny County / PennDOT",
+      "dataset": "Allegheny County Crash Data",
+      "landing_page": "https://data.wprdc.org/dataset/allegheny-county-crash-data",
+      "resource_id": "c6bedb17-2d23-49b1-843a-8f6b41e5e5c3",
+      "url": "https://data.wprdc.org/dataset/3130f583-9499-472b-bb5a-f63a6ff6059a/resource/c6bedb17-2d23-49b1-843a-8f6b41e5e5c3/download/crash_allegheny_2025.csv",
+      "path": "raw/wprdc/crashes/crashes_2025.csv",
+      "format": "csv",
+      "license": "CC0",
+      "temporal_coverage": "2025",
+      "known_limitations": ["Must be deduplicated against future cumulative releases using CRN."]
+    },
+    {
+      "id": "wprdc_municipality_codes",
+      "enabled": true,
+      "role": "data_dictionary",
+      "publisher": "Allegheny County / PennDOT",
+      "dataset": "Allegheny County Crash Data",
+      "landing_page": "https://data.wprdc.org/dataset/allegheny-county-crash-data",
+      "resource_id": "fb81a55f-c560-4541-9ad4-7ea7c41f79e7",
+      "url": "https://data.wprdc.org/dataset/3130f583-9499-472b-bb5a-f63a6ff6059a/resource/fb81a55f-c560-4541-9ad4-7ea7c41f79e7/download/municipalitycodes.csv",
+      "path": "raw/wprdc/crashes/municipality_codes.csv",
+      "format": "csv",
+      "license": "CC0"
+    },
+    {
+      "id": "wprdc_traffic_counts",
+      "enabled": true,
+      "role": "baseline_demand_speed",
+      "publisher": "City of Pittsburgh DOMI",
+      "dataset": "City of Pittsburgh Traffic Count",
+      "landing_page": "https://data.wprdc.org/dataset/traffic-count-data-city-of-pittsburgh",
+      "resource_id": "6b8b7fc6-75f6-498f-9830-5df1bf5bdfa5",
+      "url": "https://data.wprdc.org/dataset/a45d5ee0-c7d2-4663-a153-8434e1a26779/resource/6b8b7fc6-75f6-498f-9830-5df1bf5bdfa5/download/traffic_counter_img.geojson",
+      "path": "raw/wprdc/traffic_counts/traffic_counts.geojson",
+      "format": "geojson",
+      "license": "CC0",
+      "crs": "EPSG:4326",
+      "known_limitations": [
+        "Feed has not updated since 2021.",
+        "Only the most recent count at each location is retained.",
+        "Not every study contains volume or speed measurements."
+      ]
+    },
+    {
+      "id": "wprdc_signals",
+      "enabled": true,
+      "role": "baseline_signal_geometry",
+      "publisher": "City of Pittsburgh",
+      "dataset": "City of Pittsburgh Signalized Intersections",
+      "landing_page": "https://data.wprdc.org/dataset/city-of-pittsburgh-signalized-intersections",
+      "resource_id": "82ce557f-2388-489f-87e0-0d9d052633c4",
+      "url": "https://data.wprdc.org/dataset/f470a3d5-f5cb-4209-93a6-c974f7d5a0a4/resource/82ce557f-2388-489f-87e0-0d9d052633c4/download/si_img.geojson",
+      "path": "raw/wprdc/signals/signalized_intersections.geojson",
+      "format": "geojson",
+      "license": "CC BY",
+      "crs": "EPSG:4326"
+    },
+    {
+      "id": "wprdc_signal_operation_types",
+      "enabled": true,
+      "role": "data_dictionary",
+      "publisher": "City of Pittsburgh",
+      "dataset": "City of Pittsburgh Signalized Intersections",
+      "landing_page": "https://data.wprdc.org/dataset/city-of-pittsburgh-signalized-intersections",
+      "resource_id": "7d5b1666-c79e-4869-9ea5-03000366a1d5",
+      "url": "https://data.wprdc.org/dataset/f470a3d5-f5cb-4209-93a6-c974f7d5a0a4/resource/7d5b1666-c79e-4869-9ea5-03000366a1d5/download/signalized-intersections-signal-types.txt",
+      "path": "raw/wprdc/signals/operation_types.txt",
+      "format": "txt",
+      "license": "CC BY"
+    },
+    {
+      "id": "wprdc_intersection_markings",
+      "enabled": true,
+      "role": "baseline_road_design",
+      "publisher": "City of Pittsburgh",
+      "dataset": "City of Pittsburgh Intersection Markings",
+      "landing_page": "https://data.wprdc.org/dataset/city-of-pittsburgh-markings",
+      "resource_id": "f2f0c299-4f7b-4689-be3c-a2ad38252cf4",
+      "url": "https://data.wprdc.org/dataset/31ce085b-87b9-4ffd-adbb-0a9f5b3cf3df/resource/f2f0c299-4f7b-4689-be3c-a2ad38252cf4/download/markings.geojson",
+      "path": "raw/wprdc/intersection_markings/markings.geojson",
+      "format": "geojson",
+      "license": "CC BY",
+      "crs": "EPSG:4326",
+      "known_limitations": ["Feed has not updated since 2021."]
+    },
+    {
+      "id": "wprdc_crosswalks",
+      "enabled": true,
+      "role": "baseline_pedestrian_geometry",
+      "publisher": "City of Pittsburgh",
+      "dataset": "City of Pittsburgh Intersection Markings",
+      "landing_page": "https://data.wprdc.org/dataset/city-of-pittsburgh-markings",
+      "resource_id": "31b37e98-6a5a-44dd-8785-7f4aec85b115",
+      "url": "https://data.wprdc.org/dataset/31ce085b-87b9-4ffd-adbb-0a9f5b3cf3df/resource/31b37e98-6a5a-44dd-8785-7f4aec85b115/download/crosswalks_img.geojson",
+      "path": "raw/wprdc/intersection_markings/crosswalks.geojson",
+      "format": "geojson",
+      "license": "CC BY",
+      "crs": "EPSG:4326",
+      "known_limitations": ["Crosswalk feed has not updated since 2018."]
+    },
+    {
+      "id": "wprdc_high_injury_network",
+      "enabled": true,
+      "role": "validation_safety_layer",
+      "publisher": "City of Pittsburgh DOMI",
+      "dataset": "High Injury Network",
+      "landing_page": "https://data.wprdc.org/dataset/high-injury-network",
+      "resource_id": "f66956f7-0099-40c0-b316-e97cd1360ceb",
+      "url": "https://data.wprdc.org/dataset/ee23d41a-7c7d-4093-9245-b1691b7b9b4d/resource/f66956f7-0099-40c0-b316-e97cd1360ceb/download/high_injury.geojson",
+      "path": "raw/wprdc/high_injury_network/high_injury_network.geojson",
+      "format": "geojson",
+      "license": "Not specified",
+      "crs": "EPSG:4326",
+      "known_limitations": [
+        "Derived partly from 2018-2022 PennDOT crashes; do not treat as independent validation of those same records."
+      ]
+    },
+    {
+      "id": "wprdc_speed_humps",
+      "enabled": false,
+      "role": "supplemental_intervention_geometry",
+      "publisher": "City of Pittsburgh",
+      "dataset": "City of Pittsburgh Speed Humps",
+      "landing_page": "https://data.wprdc.org/dataset/city-of-pittsburgh-speed-humps",
+      "resource_id": "2010c936-c825-4538-826b-29ec4de32010",
+      "url": "https://data.wprdc.org/dataset/a4007e33-9db4-4832-a022-4922415f9fff/resource/2010c936-c825-4538-826b-29ec4de32010/download/speedhumps_img.geojson",
+      "path": "raw/wprdc/speed_humps/speed_humps.geojson",
+      "format": "geojson",
+      "license": "CC0",
+      "crs": "EPSG:4326",
+      "known_limitations": ["Feed has not updated since 2021."]
+    },
+    {
+      "id": "domi_traffic_calming_page",
+      "enabled": true,
+      "role": "intervention_evidence",
+      "publisher": "City of Pittsburgh DOMI",
+      "dataset": "DOMI Traffic Calming Data",
+      "landing_page": "https://www.pittsburghpa.gov/Resident-Services/Road-Maintenance/Road-Safety/Traffic-Calming/Traffic-Calming-Data",
+      "url": "https://www.pittsburghpa.gov/Resident-Services/Road-Maintenance/Road-Safety/Traffic-Calming/Traffic-Calming-Data",
+      "path": "raw/pittsburgh_domi/traffic_calming/source_snapshot.html",
+      "format": "html",
+      "license": "City website terms",
+      "known_limitations": ["Measurements are published through an embedded Google Sheet and require a separate extraction step."]
+    },
+    {
+      "id": "domi_traffic_calming_csv",
+      "enabled": true,
+      "role": "intervention_evidence",
+      "publisher": "City of Pittsburgh DOMI",
+      "dataset": "DOMI Traffic Calming Data",
+      "landing_page": "https://www.pittsburghpa.gov/Resident-Services/Road-Maintenance/Road-Safety/Traffic-Calming/Traffic-Calming-Data",
+      "url": "https://docs.google.com/spreadsheets/d/e/2PACX-1vS92cNRa1hxr_AEePJYY0D4TjeAU-6mFI84_IOvTa8agDpd2fSpa2WOuGcXSCK-KA/pub?output=csv",
+      "path": "raw/pittsburgh_domi/traffic_calming/traffic_calming.csv",
+      "format": "csv",
+      "license": "City website terms",
+      "known_limitations": [
+        "Average daily trips may be affected by weather and holidays.",
+        "The published workbook sheet is labeled 2025 although the landing page was updated in 2026."
+      ]
+    },
+    {
+      "id": "domi_penn_avenue_rightsizing",
+      "enabled": true,
+      "role": "intervention_evidence",
+      "publisher": "City of Pittsburgh DOMI",
+      "dataset": "Penn Avenue Rightsizing",
+      "landing_page": "https://engage.pittsburghpa.gov/index.php?cID=1598",
+      "url": "https://engage.pittsburghpa.gov/index.php?cID=1598",
+      "path": "raw/pittsburgh_domi/penn_avenue/source_snapshot.html",
+      "format": "html",
+      "license": "City website terms"
+    },
+    {
+      "id": "rosa_p_complete_streets",
+      "enabled": false,
+      "role": "intervention_evidence",
+      "publisher": "Mobility21 / Carnegie Mellon University",
+      "dataset": "Travel Impacts of a Complete Street Project in a Mixed Urban Corridor",
+      "landing_page": "https://rosap.ntl.bts.gov/view/dot/65461",
+      "url": null,
+      "path": "raw/rosa_p/complete_streets/supporting_data.csv",
+      "format": "csv",
+      "license": "Unknown",
+      "known_limitations": [
+        "The listed ROSA P download currently redirects to an unrelated WPRDC crash dataset. Resolve before enabling."
+      ]
+    }
+  ]
+}

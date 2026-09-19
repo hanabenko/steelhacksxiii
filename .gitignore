@@ -10,6 +10,18 @@
 *.userosscache
 *.sln.docstates
 *.env
+.claude
+.venv/
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.ruff_cache/
+
+# Large, reproducible data artifacts (kept locally inside the repository)
+data/raw/
+data/normalized/
+data/scenarios/
+
 
 # User-specific files (MonoDevelop/Xamarin Studio)
 *.userprefs

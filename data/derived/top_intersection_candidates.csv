@@ -1,0 +1,26 @@
+candidate_id,description,operation_type,traffic_count,crash_count,injury_crash_count,severe_crash_count,vru_crash_count,crosswalk_count,hin_count,coverage_score_pre_osm,safety_priority_score,selection_score,osm_status
+signal_1231569867,General Robinson St - Sandusky St,Fixed,1,167,70,7,5,5,2,100.0,95.5,98.4,not_assessed
+signal_169526237,Lacock St - Sandusky St,Fixed,1,140,65,7,5,4,1,100.0,95.3,98.4,not_assessed
+signal_649032132,Atlantic Ave - Baum Blvd - Liberty Ave,Fully Actuated,2,80,36,6,15,5,2,100.0,94.2,98.0,not_assessed
+signal_1354769511,First Ave - Grant St,Fixed,1,103,34,5,6,7,1,100.0,92.3,97.3,not_assessed
+signal_2011109930,Aiken Ave - Centre Ave - Liberty Ave,Fully Actuated,1,67,34,5,13,5,3,100.0,92.2,97.3,not_assessed
+signal_1977783821,Fifth Ave - Meyran Ave,Fixed,1,114,53,2,25,6,1,100.0,91.6,97.1,not_assessed
+signal_780501747,Madison Ave - Tripoli St,Fixed,1,114,36,4,5,5,1,100.0,91.5,97.0,not_assessed
+signal_1681130241,Madison Ave - E. North Ave - Spring Garden Ave,Fixed,1,113,36,4,5,4,1,100.0,91.4,97.0,not_assessed
+signal_699752046,Grant St - Third Ave,Fixed,1,87,29,4,10,13,1,100.0,91.2,96.9,not_assessed
+signal_1087401421,Fifth Ave - Morewood Ave,Fixed,2,59,29,6,14,4,1,100.0,90.6,96.7,not_assessed
+signal_1652887156,Forbes Ave - Grant St,Fixed,1,100,46,2,14,6,2,100.0,90.4,96.6,not_assessed
+signal_713514147,BENNETT  STERRETT,Fixed,3,73,37,5,5,1,1,100.0,90.4,96.6,not_assessed
+signal_1233506574,Aiken Ave - Baum Blvd,Fully Actuated,1,71,27,5,10,4,1,100.0,90.3,96.6,not_assessed
+signal_849705252,Cherry Way - Forbes Ave,Fixed,1,67,34,3,16,5,1,100.0,89.6,96.4,not_assessed
+signal_831550141,Blvd of the Allies - Grant St,Fixed,1,96,29,3,9,12,2,100.0,89.4,96.3,not_assessed
+signal_181739837,Baum Blvd - Morewood Ave,Fully Actuated,1,67,35,3,12,4,1,100.0,89.4,96.3,not_assessed
+signal_1980836391,Darragh St - Fifth Ave - Mckee Pl,Fixed,1,98,37,2,13,5,1,100.0,89.1,96.2,not_assessed
+signal_814711193,Fourth Ave - Grant St,Fixed,1,103,36,2,9,9,1,100.0,88.2,95.9,not_assessed
+signal_1740199771,Forbes Ave - Mckee Pl,Semi Actuated,1,91,34,2,10,6,1,100.0,87.6,95.7,not_assessed
+signal_391153997,Penn Ave - 22nd St,Fixed,2,88,29,4,4,4,1,100.0,87.6,95.7,not_assessed
+signal_1763708638,Anderson St - General Robinson St,Fixed,1,117,44,2,3,11,1,100.0,85.1,94.8,not_assessed
+signal_489596708,Centre Ave - Morewood Ave,Fully Actuated,2,51,28,3,10,4,1,100.0,84.9,94.7,not_assessed
+signal_1395611149,Penn Ave - 21st St,Fixed,1,71,21,4,5,5,1,100.0,84.6,94.6,not_assessed
+signal_1079872343,Forbes Ave - Marion St,Fixed,1,58,22,3,9,6,1,100.0,83.5,94.2,not_assessed
+signal_113208382,Braddock Ave - Meade St,Fixed / Ped Actuated,1,84,43,2,3,4,1,100.0,83.3,94.2,not_assessed

@@ -1,0 +1,212 @@
+schema_version: 1
+generated_at: '2026-09-19T18:09:58.296034+00:00'
+data_root: /Users/hana/Documents/Code/steelhacksxiii/data
+sources:
+- id: domi_penn_avenue_rightsizing
+  enabled: true
+  role: intervention_evidence
+  publisher: City of Pittsburgh DOMI
+  dataset: Penn Avenue Rightsizing
+  landing_page: https://engage.pittsburghpa.gov/index.php?cID=1598
+  url: https://engage.pittsburghpa.gov/index.php?cID=1598
+  path: raw/pittsburgh_domi/penn_avenue/source_snapshot.html
+  format: html
+  license: City website terms
+  retrieved_at: '2026-09-19T18:09:58.295507+00:00'
+  status: existing
+  bytes: 232190
+  sha256: 8d15ebd94cae98eea37895f45d3552a4ad3bc40d21163cde73626c1726c3ffd7
+- id: domi_traffic_calming_csv
+  enabled: true
+  role: intervention_evidence
+  publisher: City of Pittsburgh DOMI
+  dataset: DOMI Traffic Calming Data
+  landing_page: https://www.pittsburghpa.gov/Resident-Services/Road-Maintenance/Road-Safety/Traffic-Calming/Traffic-Calming-Data
+  url: https://docs.google.com/spreadsheets/d/e/2PACX-1vS92cNRa1hxr_AEePJYY0D4TjeAU-6mFI84_IOvTa8agDpd2fSpa2WOuGcXSCK-KA/pub?output=csv
+  path: raw/pittsburgh_domi/traffic_calming/traffic_calming.csv
+  format: csv
+  license: City website terms
+  known_limitations:
+  - Average daily trips may be affected by weather and holidays.
+  - The published workbook sheet is labeled 2025 although the landing page was updated
+    in 2026.
+  retrieved_at: '2026-09-19T18:09:58.289638+00:00'
+  status: existing
+  bytes: 3963
+  sha256: 21b11d9118ce764a59c20bd9d66a4ee17e43b97da3b2c4a1448856d8792429f5
+- id: domi_traffic_calming_page
+  enabled: true
+  role: intervention_evidence
+  publisher: City of Pittsburgh DOMI
+  dataset: DOMI Traffic Calming Data
+  landing_page: https://www.pittsburghpa.gov/Resident-Services/Road-Maintenance/Road-Safety/Traffic-Calming/Traffic-Calming-Data
+  url: https://www.pittsburghpa.gov/Resident-Services/Road-Maintenance/Road-Safety/Traffic-Calming/Traffic-Calming-Data
+  path: raw/pittsburgh_domi/traffic_calming/source_snapshot.html
+  format: html
+  license: City website terms
+  known_limitations:
+  - Measurements are published through an embedded Google Sheet and require a separate
+    extraction step.
+  retrieved_at: '2026-09-19T18:09:58.283573+00:00'
+  status: existing
+  bytes: 141819
+  sha256: a39d10ed0c5b2b9b146851dfd6f51870a541d0a4d465aa52a65e1446974ba85d
+- id: wprdc_crashes_2025
+  enabled: true
+  role: baseline_safety
+  publisher: Allegheny County / PennDOT
+  dataset: Allegheny County Crash Data
+  landing_page: https://data.wprdc.org/dataset/allegheny-county-crash-data
+  resource_id: c6bedb17-2d23-49b1-843a-8f6b41e5e5c3
+  url: https://data.wprdc.org/dataset/3130f583-9499-472b-bb5a-f63a6ff6059a/resource/c6bedb17-2d23-49b1-843a-8f6b41e5e5c3/download/crash_allegheny_2025.csv
+  path: raw/wprdc/crashes/crashes_2025.csv
+  format: csv
+  license: CC0
+  temporal_coverage: '2025'
+  known_limitations:
+  - Must be deduplicated against future cumulative releases using CRN.
+  retrieved_at: '2026-09-19T18:09:58.218580+00:00'
+  status: existing
+  bytes: 4916207
+  sha256: c20e481f90de86c6f600118c81cfd1d0370e77378c9455f6eb3a21df305bf519
+- id: wprdc_crashes_cumulative_2004_2024
+  enabled: true
+  role: baseline_safety
+  publisher: Allegheny County / PennDOT
+  dataset: Allegheny County Crash Data
+  landing_page: https://data.wprdc.org/dataset/allegheny-county-crash-data
+  resource_id: 2c13021f-74a9-4289-a1e5-fe0472c89881
+  url: https://data.wprdc.org/datastore/dump/2c13021f-74a9-4289-a1e5-fe0472c89881
+  path: raw/wprdc/crashes/cumulative_2004_2024.csv
+  format: csv
+  license: CC0
+  temporal_coverage: 2004-2024
+  known_limitations:
+  - Exact crash dates are suppressed by PennDOT.
+  - Schema changes across years.
+  - This cumulative resource does not yet include 2025.
+  retrieved_at: '2026-09-19T18:09:58.130513+00:00'
+  status: existing
+  bytes: 116560683
+  sha256: c58a3901ee9aa845f5b33a9a3e930a2b95027367e5b2fef0225d4539db884511
+- id: wprdc_crosswalks
+  enabled: true
+  role: baseline_pedestrian_geometry
+  publisher: City of Pittsburgh
+  dataset: City of Pittsburgh Intersection Markings
+  landing_page: https://data.wprdc.org/dataset/city-of-pittsburgh-markings
+  resource_id: 31b37e98-6a5a-44dd-8785-7f4aec85b115
+  url: https://data.wprdc.org/dataset/31ce085b-87b9-4ffd-adbb-0a9f5b3cf3df/resource/31b37e98-6a5a-44dd-8785-7f4aec85b115/download/crosswalks_img.geojson
+  path: raw/wprdc/intersection_markings/crosswalks.geojson
+  format: geojson
+  license: CC BY
+  crs: EPSG:4326
+  known_limitations:
+  - Crosswalk feed has not updated since 2018.
+  retrieved_at: '2026-09-19T18:09:58.268225+00:00'
+  status: existing
+  bytes: 3083390
+  sha256: 2e10d061f9595ff2b72321705357b2b6aa8c51247aa6d234f4f84dc569e5d38f
+- id: wprdc_high_injury_network
+  enabled: true
+  role: validation_safety_layer
+  publisher: City of Pittsburgh DOMI
+  dataset: High Injury Network
+  landing_page: https://data.wprdc.org/dataset/high-injury-network
+  resource_id: f66956f7-0099-40c0-b316-e97cd1360ceb
+  url: https://data.wprdc.org/dataset/ee23d41a-7c7d-4093-9245-b1691b7b9b4d/resource/f66956f7-0099-40c0-b316-e97cd1360ceb/download/high_injury.geojson
+  path: raw/wprdc/high_injury_network/high_injury_network.geojson
+  format: geojson
+  license: Not specified
+  crs: EPSG:4326
+  known_limitations:
+  - Derived partly from 2018-2022 PennDOT crashes; do not treat as independent validation
+    of those same records.
+  retrieved_at: '2026-09-19T18:09:58.276766+00:00'
+  status: existing
+  bytes: 466603
+  sha256: 9f30cdae634d14aed3721476eb39c40942a38d3dbabdd235531f3ec448b83211
+- id: wprdc_intersection_markings
+  enabled: true
+  role: baseline_road_design
+  publisher: City of Pittsburgh
+  dataset: City of Pittsburgh Intersection Markings
+  landing_page: https://data.wprdc.org/dataset/city-of-pittsburgh-markings
+  resource_id: f2f0c299-4f7b-4689-be3c-a2ad38252cf4
+  url: https://data.wprdc.org/dataset/31ce085b-87b9-4ffd-adbb-0a9f5b3cf3df/resource/f2f0c299-4f7b-4689-be3c-a2ad38252cf4/download/markings.geojson
+  path: raw/wprdc/intersection_markings/markings.geojson
+  format: geojson
+  license: CC BY
+  crs: EPSG:4326
+  known_limitations:
+  - Feed has not updated since 2021.
+  retrieved_at: '2026-09-19T18:09:58.258544+00:00'
+  status: existing
+  bytes: 5092335
+  sha256: 8ba559ea7aaa7272d7568b4484b46903f8ec3e7d1da544ab30c87e387754ed7b
+- id: wprdc_municipality_codes
+  enabled: true
+  role: data_dictionary
+  publisher: Allegheny County / PennDOT
+  dataset: Allegheny County Crash Data
+  landing_page: https://data.wprdc.org/dataset/allegheny-county-crash-data
+  resource_id: fb81a55f-c560-4541-9ad4-7ea7c41f79e7
+  url: https://data.wprdc.org/dataset/3130f583-9499-472b-bb5a-f63a6ff6059a/resource/fb81a55f-c560-4541-9ad4-7ea7c41f79e7/download/municipalitycodes.csv
+  path: raw/wprdc/crashes/municipality_codes.csv
+  format: csv
+  license: CC0
+  retrieved_at: '2026-09-19T18:09:58.230597+00:00'
+  status: existing
+  bytes: 3318
+  sha256: 8490cb5d4c61ba3fa727f392a2fac2240d1a2509d15f11d8ed550f1562ae2824
+- id: wprdc_signal_operation_types
+  enabled: true
+  role: data_dictionary
+  publisher: City of Pittsburgh
+  dataset: City of Pittsburgh Signalized Intersections
+  landing_page: https://data.wprdc.org/dataset/city-of-pittsburgh-signalized-intersections
+  resource_id: 7d5b1666-c79e-4869-9ea5-03000366a1d5
+  url: https://data.wprdc.org/dataset/f470a3d5-f5cb-4209-93a6-c974f7d5a0a4/resource/7d5b1666-c79e-4869-9ea5-03000366a1d5/download/signalized-intersections-signal-types.txt
+  path: raw/wprdc/signals/operation_types.txt
+  format: txt
+  license: CC BY
+  retrieved_at: '2026-09-19T18:09:58.251945+00:00'
+  status: existing
+  bytes: 903
+  sha256: 5b8019d0446f61197b172c7df194548384f87906d9b8b74183bd968bb11dd4de
+- id: wprdc_signals
+  enabled: true
+  role: baseline_signal_geometry
+  publisher: City of Pittsburgh
+  dataset: City of Pittsburgh Signalized Intersections
+  landing_page: https://data.wprdc.org/dataset/city-of-pittsburgh-signalized-intersections
+  resource_id: 82ce557f-2388-489f-87e0-0d9d052633c4
+  url: https://data.wprdc.org/dataset/f470a3d5-f5cb-4209-93a6-c974f7d5a0a4/resource/82ce557f-2388-489f-87e0-0d9d052633c4/download/si_img.geojson
+  path: raw/wprdc/signals/signalized_intersections.geojson
+  format: geojson
+  license: CC BY
+  crs: EPSG:4326
+  retrieved_at: '2026-09-19T18:09:58.244548+00:00'
+  status: existing
+  bytes: 485975
+  sha256: 5469802cc1f7b54de49ad759fcecbf7588ed0968dd44be8a4778a1718cfe3f90
+- id: wprdc_traffic_counts
+  enabled: true
+  role: baseline_demand_speed
+  publisher: City of Pittsburgh DOMI
+  dataset: City of Pittsburgh Traffic Count
+  landing_page: https://data.wprdc.org/dataset/traffic-count-data-city-of-pittsburgh
+  resource_id: 6b8b7fc6-75f6-498f-9830-5df1bf5bdfa5
+  url: https://data.wprdc.org/dataset/a45d5ee0-c7d2-4663-a153-8434e1a26779/resource/6b8b7fc6-75f6-498f-9830-5df1bf5bdfa5/download/traffic_counter_img.geojson
+  path: raw/wprdc/traffic_counts/traffic_counts.geojson
+  format: geojson
+  license: CC0
+  crs: EPSG:4326
+  known_limitations:
+  - Feed has not updated since 2021.
+  - Only the most recent count at each location is retained.
+  - Not every study contains volume or speed measurements.
+  retrieved_at: '2026-09-19T18:09:58.237492+00:00'
+  status: existing
+  bytes: 421434
+  sha256: 6ad5bd9bb3360e0dbf41a1327779f7f95e7b01f935cc6c6e74de5c0590f9445f

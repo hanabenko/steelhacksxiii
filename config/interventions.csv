@@ -1,0 +1,4 @@
+study_id,location_id,street,from_street,to_street,intervention_type,before_adt,after_adt,before_median_speed,after_median_speed,before_p85_speed,after_p85_speed,before_pct_speeding,after_pct_speeding,before_max_speed,after_max_speed,before_period,after_period,source_url,notes
+penn_ave_rightsizing_2026,penn_24_25,Penn Avenue,24th Street,25th Street,road_rightsizing_and_bike_lane,2313,1492,24,22,30,27,39,23,67,53,2021-12,2026-04,https://engage.pittsburghpa.gov/index.php?cID=1598,"Quick-build lane reduction, inbound bike lane, and roadway narrowing"
+penn_ave_rightsizing_2026,penn_28_29,Penn Avenue,28th Street,29th Street,road_rightsizing_and_bike_lane,2886,3121,25,23,31,28,50,28,68,68,2021-12,2026-04,https://engage.pittsburghpa.gov/index.php?cID=1598,"Quick-build lane reduction, inbound bike lane, and roadway narrowing"
+
