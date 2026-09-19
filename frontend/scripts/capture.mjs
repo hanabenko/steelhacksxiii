@@ -1,0 +1,18 @@
+import { chromium } from '@playwright/test';
+const browser=await chromium.launch({channel:process.env.PLAYWRIGHT_CHANNEL||'chrome',headless:true,args:['--enable-unsafe-swiftshader']});
+const page=await browser.newPage({viewport:{width:1440,height:1050},deviceScaleFactor:1});
+page.on('pageerror',e=>console.error(e.message));
+await page.goto('http://127.0.0.1:5173');
+await page.locator('#scene canvas').waitFor();
+await page.waitForTimeout(2000);
+await page.screenshot({path:'artifacts/desktop.png',fullPage:true,animations:'disabled'});
+await page.locator('button[data-panel="design"]').click();
+await page.screenshot({path:'artifacts/design-panel.png',fullPage:true,animations:'disabled'});
+await page.locator('button[data-panel="simulation"]').click();
+await page.screenshot({path:'artifacts/simulation-panel.png',fullPage:true,animations:'disabled'});
+await page.getByRole('button',{name:'Close simulation panel'}).click();
+await page.setViewportSize({width:390,height:844});
+await page.screenshot({path:'artifacts/mobile.png',fullPage:true,animations:'disabled'});
+await page.locator('button[data-panel="design"]').click();
+await page.screenshot({path:'artifacts/mobile-panel.png',fullPage:true,animations:'disabled'});
+await browser.close();
