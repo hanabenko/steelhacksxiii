@@ -1,0 +1,18 @@
+{
+  "intersection_id": "fifth-meyran",
+  "center": {
+    "longitude": -79.9592766237412,
+    "latitude": 40.44116260191021
+  },
+  "radius_m": 500.0,
+  "bbox_wgs84": [
+    -79.96517823751986,
+    40.43667104603525,
+    -79.95337500996254,
+    40.445654157785164
+  ],
+  "source_url": "https://api.openstreetmap.org/api/0.6/map?bbox=-79.9651782,40.4366710,-79.9533750,40.4456542",
+  "retrieved_at": "2026-09-19T19:27:36.129346+00:00",
+  "license": "Open Data Commons Open Database License (ODbL)",
+  "attribution": "\u00a9 OpenStreetMap contributors"
+}

@@ -4,10 +4,14 @@ version = "0.1.0"
 description = "Data ingestion and intersection selection for Interlock"
 requires-python = ">=3.12,<3.15"
 dependencies = [
+    "eclipse-sumo>=1.27.1",
     "geopandas>=1.1.1",
     "pandas>=2.3.2",
     "pyarrow>=21.0.0",
+    "psycopg[binary]>=3.2.10",
     "pyyaml>=6.0.2",
+    "sumolib>=1.27.0",
+    "traci>=1.27.0",
 ]
 
 [dependency-groups]
@@ -22,4 +26,4 @@ target-version = "py312"
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
-
+pythonpath = ["."]

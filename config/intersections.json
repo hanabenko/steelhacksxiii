@@ -1,0 +1,18 @@
+{
+  "schema_version": 1,
+  "intersections": [
+    {
+      "id": "atlantic-baum-liberty",
+      "candidate_id": "signal_649032132",
+      "name": "Atlantic Avenue / Baum Boulevard / Liberty Avenue",
+      "reason": "Complete baseline coverage, High Injury Network overlap, and 15 recent vulnerable-road-user crashes within 150 meters."
+    },
+    {
+      "id": "fifth-meyran",
+      "candidate_id": "signal_1977783821",
+      "name": "Fifth Avenue / Meyran Avenue",
+      "reason": "Strong Oakland school-route story, complete baseline coverage, and 25 recent vulnerable-road-user crashes within 150 meters."
+    }
+  ]
+}
+

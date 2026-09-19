@@ -1,0 +1,20 @@
+services:
+  timescaledb:
+    image: timescale/timescaledb-ha:pg17
+    environment:
+      POSTGRES_DB: interlock
+      POSTGRES_USER: interlock
+      POSTGRES_PASSWORD: interlock_dev
+    ports:
+      - "5433:5432"
+    volumes:
+      - interlock_timescale_data:/home/postgres/pgdata/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U interlock -d interlock"]
+      interval: 3s
+      timeout: 3s
+      retries: 20
+
+volumes:
+  interlock_timescale_data:
+
