@@ -1,0 +1,194 @@
+<!doctype html>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+<title>Interlock voice harness</title>
+<style>
+  :root { color-scheme: light dark; --bg:#0f1520; --card:#18202e; --ink:#eef3fb; --muted:#93a4bd;
+          --accent:#4c8dff; --coral:#ff7a5c; --line:#26334a; }
+  * { box-sizing: border-box; }
+  body { margin:0; padding:24px 16px; font:15px/1.55 system-ui,-apple-system,Segoe UI,sans-serif;
+         background:var(--bg); color:var(--ink); }
+  main { max-width:760px; margin:0 auto; }
+  h1 { font-size:1.35rem; margin:0 0 4px; }
+  p.sub { color:var(--muted); margin:0 0 20px; }
+  .card { background:var(--card); border:1px solid var(--line); border-radius:12px;
+          padding:16px; margin-bottom:16px; }
+  h2 { font-size:.78rem; text-transform:uppercase; letter-spacing:.09em; color:var(--muted);
+       margin:0 0 10px; }
+  .row { display:flex; gap:8px; flex-wrap:wrap; }
+  input[type=text] { flex:1 1 240px; min-width:0; padding:10px 12px; border-radius:8px;
+                     border:1px solid var(--line); background:#0d131d; color:var(--ink); font:inherit; }
+  button { padding:10px 14px; border-radius:8px; border:1px solid var(--line); background:#22304a;
+           color:var(--ink); font:inherit; cursor:pointer; }
+  button.primary { background:var(--accent); border-color:var(--accent); color:#05101f; font-weight:600; }
+  button.rec { background:var(--coral); border-color:var(--coral); color:#26100a; font-weight:600; }
+  button:disabled { opacity:.45; cursor:not-allowed; }
+  .chips { display:flex; gap:6px; flex-wrap:wrap; margin-top:10px; }
+  .chips button { font-size:.82rem; padding:6px 10px; background:transparent; color:var(--muted); }
+  textarea { width:100%; min-height:190px; padding:10px; border-radius:8px; border:1px solid var(--line);
+             background:#0d131d; color:var(--ink); font:12.5px/1.5 ui-monospace,SFMono-Regular,Menlo,monospace; }
+  #answer { white-space:pre-wrap; min-height:2.6em; }
+  .meta { color:var(--muted); font-size:.82rem; margin-top:8px; }
+  .warn { color:var(--coral); }
+  .ok { color:#5fd08a; }
+</style>
+
+<main>
+  <h1>Interlock voice harness</h1>
+  <p class="sub">Exercises the voice service without touching the Three.js app. Edit the scene
+    context below and every answer changes with it.</p>
+
+  <div class="card">
+    <h2>Service</h2>
+    <div class="row">
+      <button id="check">Check health</button>
+      <button id="stop">Stop audio</button>
+    </div>
+    <div class="meta" id="health">Not checked yet.</div>
+  </div>
+
+  <div class="card">
+    <h2>Ask</h2>
+    <div class="row">
+      <input id="q" type="text" value="How safe is the path to my school?" />
+      <button id="ask" class="primary">Ask</button>
+      <button id="mic" class="rec">Hold to talk</button>
+    </div>
+    <div class="chips" id="chips"></div>
+  </div>
+
+  <div class="card">
+    <h2>Answer</h2>
+    <div id="answer">—</div>
+    <div class="meta" id="meta"></div>
+  </div>
+
+  <div class="card">
+    <h2>Scene context (JSON)</h2>
+    <textarea id="ctx"></textarea>
+  </div>
+</main>
+
+<script type="module">
+  import { VoiceClient } from './voice-client.js';
+
+  const SAMPLE = {
+    intersection_id: 'fifth-meyran',
+    intersection_name: 'Fifth Avenue and Meyran Avenue',
+    streets: ['Fifth Avenue', 'Meyran Avenue'],
+    focused_street: 'Fifth Avenue',
+    focused_zone: 'north',
+    speed_limit_mph: 25,
+    budget: { total: 100000, spent: 20000 },
+    placements: [{ type: 'raised_crosswalk', zone: 'north', cost: 12000 }],
+    objectives: [
+      { label: 'Cut conflicts by 20 percent', met: false },
+      { label: 'Keep throughput above 90 percent', met: true },
+    ],
+    crash_history: {
+      radius_meters: 150, total: 114, injury: 53, severe: 2,
+      vulnerable_road_user: 25, period: '2004 to 2025', high_injury_network: true,
+    },
+    route: {
+      destination: 'school',
+      legs: [
+        { street: 'Fifth Avenue', speed_limit_mph: 25, has_crosswalk: true },
+        { street: 'Meyran Avenue', has_crosswalk: false, crash_count: 12 },
+      ],
+    },
+    warnings: ['Bike lane on the east approach has no protective buffer'],
+    results: {
+      engine: 'local-surrogate-v1', runs: 100, score: 57, seed: 42,
+      before: { risk: { mean: 12, ci: 1 }, speed: { mean: 29, ci: 0.5 }, throughput: { mean: 800, ci: 10 } },
+      after: { risk: { mean: 9, ci: 0.7 }, speed: { mean: 26, ci: 0.5 }, throughput: { mean: 780, ci: 10 } },
+    },
+    data_note: 'Crash counts are recorded data. Simulated metrics are model output, not predictions.',
+  };
+
+  const $ = (id) => document.getElementById(id);
+  $('ctx').value = JSON.stringify(SAMPLE, null, 2);
+
+  const voice = new VoiceClient({
+    baseUrl: location.port === '8090' ? location.origin : 'http://127.0.0.1:8090',
+    contextProvider: () => {
+      try { return JSON.parse($('ctx').value); }
+      catch { show('Scene context is not valid JSON.', null, true); return {}; }
+    },
+  });
+
+  function show(text, result = null, isError = false) {
+    $('answer').textContent = text;
+    $('answer').className = isError ? 'warn' : '';
+    if (!result) { $('meta').textContent = ''; return; }
+    const bits = [`intent: ${result.intent}`, result.grounded ? 'grounded' : 'not grounded'];
+    if (result.missing?.length) bits.push(`missing: ${result.missing.join(', ')}`);
+    if (result.audioError) bits.push(`audio: ${result.audioError}`);
+    $('meta').textContent = bits.join(' · ');
+    $('meta').className = `meta${result.audioError ? ' warn' : ''}`;
+  }
+
+  async function ask(question) {
+    $('q').value = question;
+    show('…');
+    try { const result = await voice.ask(question); show(result.text, result); }
+    catch (error) { show(error.message, null, true); }
+  }
+
+  [
+    'How safe is the path to my school?',
+    'What street is this?',
+    'Have there been crashes here?',
+    'How did my design do?',
+    'How much budget is left?',
+    'What have I built?',
+    'Any warnings?',
+    'What are my objectives?',
+    'Write me a poem',
+  ].forEach((sample) => {
+    const button = document.createElement('button');
+    button.textContent = sample;
+    button.onclick = () => ask(sample);
+    $('chips').append(button);
+  });
+
+  $('ask').onclick = () => ask($('q').value);
+  $('q').addEventListener('keydown', (event) => { if (event.key === 'Enter') ask($('q').value); });
+  $('stop').onclick = () => voice.stop();
+
+  $('check').onclick = async () => {
+    try {
+      const info = await voice.health();
+      $('health').textContent = info.audio_enabled
+        ? `Ready. Audio on, voice ${info.voice_id}, model ${info.tts_model}.`
+        : `Ready, but silent: ${info.api_key_configured ? 'VOICE_TEXT_ONLY is set.' : 'no API key configured.'}`;
+      $('health').className = `meta ${info.audio_enabled ? 'ok' : 'warn'}`;
+    } catch (error) {
+      $('health').textContent = error.message;
+      $('health').className = 'meta warn';
+    }
+  };
+
+  let recording = false;
+  $('mic').onclick = async () => {
+    try {
+      if (!recording) {
+        await voice.startRecording();
+        recording = true;
+        $('mic').textContent = 'Stop and ask';
+        show('Listening…');
+      } else {
+        recording = false;
+        $('mic').textContent = 'Hold to talk';
+        show('Transcribing…');
+        const result = await voice.stopRecordingAndAsk();
+        show(result.text, result);
+      }
+    } catch (error) {
+      recording = false;
+      $('mic').textContent = 'Hold to talk';
+      show(error.message, null, true);
+    }
+  };
+
+  $('check').click();
+</script>
