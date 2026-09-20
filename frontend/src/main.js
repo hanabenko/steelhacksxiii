@@ -143,7 +143,7 @@ const intersectionOptions = INTERSECTIONS.map(
 ).join("");
 const app = document.querySelector("#app");
 app.innerHTML = `
-  <header class="header"><a class="brand" href="./" aria-label="Interlock home"><span class="brand-mark">${icon("Route")}</span>Interlock<span class="brand-dot">.</span></a><nav class="mode-switcher" aria-label="Product mode"><button class="nav-button active" id="play-mode" aria-pressed="true">Play</button><button class="nav-button" id="model-mode" aria-pressed="false">Model</button></nav><div class="header-secondary"><span class="hud-budget">${icon("Wallet")}<span id="budget-hud">$100,000</span><small>AVAILABLE</small></span><button class="quiet-button icon-button" id="guide-button" aria-label="Help and walkthrough" title="Help and walkthrough">${icon("CircleHelp")}</button><button class="quiet-button" id="settings-button">${icon("SlidersHorizontal")} Settings</button></div></header>
+  <header class="header"><a class="brand" href="./" aria-label="Interlock home"><span class="brand-mark">${icon("Route")}</span>Interlock<span class="brand-dot">.</span></a><nav class="mode-switcher" aria-label="Product mode"><button class="nav-button" id="play-mode" aria-pressed="false">Play</button><button class="nav-button active" id="model-mode" aria-pressed="true">Model</button></nav><div class="header-secondary"><span class="hud-budget">${icon("Wallet")}<span id="budget-hud">$100,000</span><small>AVAILABLE</small></span><button class="quiet-button icon-button" id="guide-button" aria-label="Help and walkthrough" title="Help and walkthrough">${icon("CircleHelp")}</button><button class="quiet-button" id="settings-button">${icon("SlidersHorizontal")} Settings</button></div></header>
   <main>
     <section class="page-heading"><div><div class="eyebrow"><span class="live-dot"></span> BETTER STREETS START HERE</div><h1>A small change. A safer city.</h1><p>Rethink a real intersection. Test the tradeoffs. Find a better way forward.</p></div><button class="outline-button" id="export-button">${icon("Download")} Export scenario</button></section>
     <section class="location-bar"><div class="location-icon">${icon("MapPin")}</div><div><h2>Forbes <span>↔</span> Fifth</h2><p>Pitt campus · Oakland</p></div><span class="location-tag">CAMPUS SANDBOX</span><div class="location-detail">${icon("Map")} <span>Real street geometry<small>OpenStreetMap · illustrative traffic</small></span></div><button class="text-button" id="data-button">Explore the data ${icon("ArrowUpRight")}</button></section>
@@ -1167,6 +1167,11 @@ function finishFastSimulation(){
     $('#playback-title').textContent=paused?'A moment to rethink':'A city in motion';
 }
 assistant=installAssistant({services,getRevision:()=>revision,getContext:()=>sceneContext({items,settings,result,budget:budgetLimit,gameMode})});
+const reportButton=document.createElement('button');
+reportButton.id='report-button';reportButton.className='model-assistant-action';reportButton.innerHTML=`${icon('FileText')} <span>Create report</span>`;
+reportButton.onclick=()=>assistant.report();
+document.body.append(reportButton);
+refreshIcons();
 sumoStudy=installSumoStudy({services,container:$('.simulation-settings'),getSettings:()=>settings,getScene:()=>scene,isBusy:()=>running||gameMode,
     onStart(){
         running=true;setHazardTool(null);chooseTool(null);startFastSimulation(3);
@@ -1183,5 +1188,5 @@ sumoStudy=installSumoStudy({services,container:$('.simulation-settings'),getSett
     },
 });
 
-// Product entry point: one challenge first, with Model always one tab away.
-startChallenge();
+// Product entry point: professional modeling is primary; Play remains one tab away.
+enterModel();

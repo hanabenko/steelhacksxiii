@@ -5,7 +5,7 @@ export function createWalkthrough({openPanel,getState}) {
   document.body.append(card);
   const $=s=>card.querySelector(s);
   let step=-1,highlight=null,steps=[],movedButton=null;
-  const assistantStep={title:'Ask your Street assistant',body:'Use the microphone icon and Street assistant label in the top toolbar. Type a question or record one, ask for advice, and enable Speak replies to hear the answer.',panel:null,target:'.header .assistant summary'};
+  const assistantStep={title:'Ask Interlock',body:'Use the prominent assistant beside Create report. Type a question or record one, ask for advice, and enable Speak replies to hear the answer.',panel:null,target:'.assistant summary'};
   const freeSteps=[
     {title:'Explore simulation mode',body:'Explore traffic across three campus intersections. Set your own conditions and run the current scenario. This walkthrough stays in simulation mode; there is no budget or upgrade requirement.',panel:null,target:'.navigation-panel'},
     {title:'Choose your conditions',body:'Set traffic demand, signal timing, weather, and starting hour. You can select a historical weather date or choose conditions yourself. These settings apply to all three intersections.',panel:'simulation',target:'#condition-controls'},
