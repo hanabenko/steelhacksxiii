@@ -549,7 +549,7 @@ def test_frontend_contract_returns_metrics_replay_and_matched_deltas() -> None:
         {
             "schemaVersion": 2,
             "intersection": FRONTEND_INTERSECTION_ID,
-            "settings": {"runs": 2, "demand": 500, "green": 25, "av": 0},
+            "settings": {"runs": 2, "demand": 500, "green": 25, "av": 0, "conditions": {"weather": "snow"}},
             "upgrades": [{"type": "signal", "zone": "west"}],
         },
         baseline_loader=baseline_loader,
@@ -558,6 +558,8 @@ def test_frontend_contract_returns_metrics_replay_and_matched_deltas() -> None:
 
     assert [name for name, _ in calls] == ["baseline", "modified"]
     assert calls[0][1]["vehicle_demand_vehicles_per_hour"] == 500
+    assert calls[0][1]["weather"] == calls[1][1]["weather"] == "snow"
+    assert result["translation"]["weather"]["weather"] == "snow"
     assert result["baseline"]["metrics"]["mean_speed_mph"]["unit"] == "mph"
     assert result["delta"]["mean_speed_mph"] == pytest.approx(-2.2369362920544)
     replay = result["modified"]["representative_replay"]

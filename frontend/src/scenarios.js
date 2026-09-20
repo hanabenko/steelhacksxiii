@@ -1,12 +1,8 @@
 import { INTERSECTIONS } from './intersections.js';
 import {ROAD_BLOCKS,nearestRoadPoint} from './road-blocks.js';
 
-export const WEATHER = {
-  clear:{label:'Clear',speed:1,capacity:1,risk:1},
-  rain:{label:'Rain',speed:.8,capacity:.88,risk:1.25},
-  storm:{label:'Thunderstorm',speed:.62,capacity:.72,risk:1.5},
-  snow:{label:'Snow / icy roads',speed:.55,capacity:.65,risk:1.65},
-};
+import {WEATHER} from './weather.js';
+export {WEATHER};
 export const DEFAULT_CONDITIONS={weather:'clear',closure:null,pothole:null,closures:[],potholes:[],hour:9,dayNight:true};
 export function makeScenario(rng=Math.random){
   const index=Math.floor(rng()*4),site=INTERSECTIONS[Math.floor(rng()*INTERSECTIONS.length)];

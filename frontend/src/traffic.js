@@ -74,6 +74,7 @@ export function createTraffic(features,count=42,points=[]){
   const vehicles=Array.from({length:count},(_,i)=>{const route=routes[i%routes.length],rank=Math.floor(i/routes.length)+(i%routes.length===7?.5:0);const kind=i%13===3&&/^(forbes|fifth)/.test(route.id)?'bus':i%7===5?'bike':'car';return{kind,length:kind==='bus'?11.5:kind==='bike'?2:4.5,served:[],dwell:0,route,s:(12+rank*62)%route.length,speed:0,desired:kind==='bike'?4.3:kind==='bus'?7:7.8+(i*17%19)/10,enabled:true,braking:false,pose:poseAt(route,(12+rank*62)%route.length)};});
   function update(dt,signals,upgrades=[],incident=null,pedestrians=[],conditions=DEFAULT_CONDITIONS){
     const weather=WEATHER[conditions.weather||'clear'];
+    const minGap=2*weather.min_gap_scale,headway=1.35*weather.tau_scale,decel=3*weather.decel_scale;
     const closures=[...upgrades.filter(i=>i.type==='closure'),...(conditions.closure?[conditions.closure]:[])].map(i=>roadAnchor('closure',i.zone,i.intersection));
     for(const id of conditions.closures||[]){const block=ROAD_BLOCKS.find(b=>b.id===id);if(block)closures.push(...blockEnds(block));}
     const pothole=conditions.pothole&&!upgrades.some(i=>i.type==='repair'&&i.intersection===conditions.pothole.intersection&&i.zone===conditions.pothole.zone)?roadAnchor('repair',conditions.pothole.zone,conditions.pothole.intersection):null;
@@ -112,13 +113,13 @@ export function createTraffic(features,count=42,points=[]){
         for(const other of snapshots){if(other===old||!other.enabled)continue;const dx=other.pose.x-old.pose.x,dz=other.pose.z-old.pose.z;const along=dx*Math.sin(old.pose.angle)+dz*Math.cos(old.pose.angle),lateral=Math.abs(dx*Math.cos(old.pose.angle)-dz*Math.sin(old.pose.angle));
           if(along>0&&lateral<2.3&&Math.cos(other.pose.angle-old.pose.angle)>.5)gap=Math.min(gap,along-(v.length+other.length)/2);
         }
-        for(const stop of v.route.stops){const distance=stop.s-v.s-(v.length-4.5)/2,state=stop.axis==='x'?signals.penn:signals.cross;if(distance>=0&&(state==='red'||state==='amber'&&distance>v.speed*v.speed/7+2))gap=Math.min(gap,distance+1.5);
+        for(const stop of v.route.stops){const distance=stop.s-v.s-(v.length-4.5)/2,state=stop.axis==='x'?signals.penn:signals.cross;if(distance>=0&&(state==='red'||state==='amber'&&distance>v.speed*v.speed/(7*weather.decel_scale)+minGap))gap=Math.min(gap,distance+1.5);
           if(upgrades.some(item=>item.intersection===stop.site&&['crosswalk','diet','curb'].includes(item.type))&&Math.abs(distance)<35)target=Math.min(target,5.5);
         }
         if(v.kind==='bus')for(const stop of v.route.busStops){if(v.served.includes(stop.id))continue;const distance=stop.s-v.s;if(distance<-.5){v.served.push(stop.id);continue;}if(distance<45){gap=Math.min(gap,distance+1.5);if(distance<1&&v.speed<.2){v.dwell=5;v.served.push(stop.id);}}}
         // Leave a two meter gap and a speed-dependent following buffer; brake before the stop line.
-        if(Number.isFinite(gap))target=Math.min(target,Math.sqrt(2*3*Math.max(0,gap-2)),Math.max(0,(gap-2)/1.35));
-        const acceleration=Math.max(v.reacting?-7:-4.5,Math.min(1.7,(target-v.speed)*1.8));v.braking=acceleration<-.35;v.speed=Math.max(0,v.speed+acceleration*h);v.s+=Math.min(v.speed*h,Math.max(0,gap-1.5));
+        if(Number.isFinite(gap))target=Math.min(target,Math.sqrt(2*decel*Math.max(0,gap-minGap)),Math.max(0,(gap-minGap)/headway));
+        const acceleration=Math.max(v.reacting?-Math.max(7*weather.emergency_decel_scale,4.5*weather.decel_scale):-4.5*weather.decel_scale,Math.min(1.7*weather.decel_scale,(target-v.speed)*1.8));v.braking=acceleration<-.35;v.speed=Math.max(0,v.speed+acceleration*h);v.s+=Math.min(v.speed*h,Math.max(0,gap-1.5));
         if(v.s>=v.route.length){const entry=poseAt(v.route,0);if(!snapshots.some(o=>o.enabled&&Math.hypot(o.pose.x-entry.x,o.pose.z-entry.z)<12)){v.s=0;v.speed=0;v.served=[];v.previousPose={...entry};}else v.s=v.route.length;}
         v.pose=poseAt(v.route,v.s);
       });

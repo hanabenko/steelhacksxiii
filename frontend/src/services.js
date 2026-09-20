@@ -11,7 +11,8 @@ export function sceneContext({items, settings, result, budget, gameMode}) {
     results:result ? {...result,stale:false} : null,
     warnings:[`${gameMode?'Challenge':'Free simulation'}; weather: ${settings.conditions?.weather||'clear'}; demand: ${settings.demand} vehicles/hour per intersection.`,
       'Traffic animation is illustrative. Campus metrics are uncalibrated local estimates, not measured crashes.'],
-    data_note:'Street geometry: OpenStreetMap. Local conflict proxies are not crash predictions.',
+    weather:settings.conditions?.weatherObservation||{weather:settings.conditions?.weather||'clear',source:'Manual or challenge condition'},
+    data_note:'Weather behavior uses engineering assumptions; historical weather is Open-Meteo ERA5 reanalysis. Street geometry: OpenStreetMap. Local conflict proxies are not crash predictions.',
   };
 }
 

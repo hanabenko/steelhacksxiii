@@ -13,6 +13,7 @@ from collections.abc import Callable, Mapping, Sequence
 from pathlib import Path
 from typing import Any
 
+from weather import get_profile
 from simulation.baseline import get_baseline_state, get_scenario_state
 
 CONTRACT_VERSION = 1
@@ -89,6 +90,14 @@ def validate_frontend_payload(payload: Mapping[str, Any]) -> dict[str, Any]:
         )
 
     settings = _require_mapping(payload.get("settings", {}), "settings")
+    conditions = _require_mapping(settings.get("conditions", {}), "settings.conditions")
+    weather = conditions.get("weather", "clear")
+    if not isinstance(weather, str):
+        raise FrontendContractValidationError("invalid_payload", "weather must be a supported string")
+    try:
+        weather = get_profile(weather).id
+    except ValueError as exc:
+        raise FrontendContractValidationError("invalid_payload", str(exc)) from exc
     runs = int(_finite_number(settings.get("runs", payload.get("runs", 50)), "settings.runs", minimum=1))
     if runs > 1000:
         raise FrontendContractValidationError(
@@ -196,6 +205,7 @@ def validate_frontend_payload(payload: Mapping[str, Any]) -> dict[str, Any]:
         "duration_s": duration_s,
         "pedestrians_per_hour": pedestrians_per_hour,
         "vehicle_demand_vehicles_per_hour": vehicle_demand,
+        "weather": weather,
         "interventions": translated,
     }
 
@@ -328,6 +338,7 @@ def simulate_frontend_scenario(
         "pedestrians_per_hour": config["pedestrians_per_hour"],
         "vehicle_demand_vehicles_per_hour": config["vehicle_demand_vehicles_per_hour"],
         "force_refresh": force_refresh,
+        "weather": config["weather"],
     }
     baseline_state = baseline_loader(**common)
     if config["interventions"]:
@@ -366,5 +377,6 @@ def simulate_frontend_scenario(
             "accepted_interventions": config["interventions"],
             "vehicle_demand_vehicles_per_hour": config["vehicle_demand_vehicles_per_hour"],
             "matched_seed_lists_equal": baseline_seeds == modified_seeds,
+            "weather": get_profile(config["weather"]).to_dict(),
         },
     }

@@ -1,3 +1,4 @@
+import {historicalWeather,WEATHER_DATA} from './weather.js';
 import { makeScenario, DEFAULT_CONDITIONS, WEATHER } from './scenarios.js';
 import {ROAD_BLOCKS} from './road-blocks.js';
 import './modes.css';
@@ -190,7 +191,7 @@ $('#quick-run').setAttribute('aria-label','Run simulation settings');
 $('.action-dock').insertAdjacentHTML('afterend','<button id="play-mode" class="play-mode">▶ Play</button><section class="scenario-banner" hidden><div><small>PLAY · FIX THE STREETS</small><strong id="scenario-title"></strong><p id="scenario-description"></p></div><button id="new-challenge">New challenge</button><button id="exit-game">Exit game</button></section>');
 $('.playback-status span').id='environment-status';
 const hazardOptions='<option value="">None</option>'+INTERSECTIONS.flatMap(site=>['north','east','south','west'].map(zone=>`<option value="${site.id}/${zone}">${site.name} · ${zone}</option>`)).join('');
-$('.settings-grid').insertAdjacentHTML('afterend',`<fieldset id="condition-controls"><legend>Simulation conditions</legend><p id="mode-explanation">Free simulation: set your own conditions and budget.</p><label>Weather<select id="weather">${Object.entries(WEATHER).map(([id,w])=>`<option value="${id}">${w.label}</option>`).join('')}</select></label><label>Closed approach<select id="closed-road">${hazardOptions}</select></label><label>Large pothole<select id="pothole-road">${hazardOptions}</select></label><label>Starting hour <output id="hour-value">09:00</output><input id="start-hour" type="range" min="0" max="23" value="9"></label><label class="cycle-setting"><input id="day-night" type="checkbox" checked> Day / night cycle</label><label>Build budget ($)<input id="scenario-budget" type="number" min="0" max="500000" step="1000" value="100000"></label></fieldset><div class="free-actions"><button id="free-design">Edit streets</button><button id="free-results">View impact</button></div>`);
+$('.settings-grid').insertAdjacentHTML('afterend',`<fieldset id="condition-controls"><legend>Simulation conditions</legend><p id="mode-explanation">Free simulation: set your own conditions and budget.</p><label>Weather<select id="weather">${Object.entries(WEATHER).map(([id,w])=>`<option value="${id}">${w.label}</option>`).join('')}</select></label><label>Historical weather date<input id="weather-date" type="date" min="2019-01-01" max="2025-12-31" value="2025-01-01"></label><button type="button" id="apply-weather-date">Use historical weather</button><p id="weather-source" role="status"></p><label>Closed approach<select id="closed-road">${hazardOptions}</select></label><label>Large pothole<select id="pothole-road">${hazardOptions}</select></label><label>Starting hour <output id="hour-value">09:00</output><input id="start-hour" type="range" min="0" max="23" value="9"></label><label class="cycle-setting"><input id="day-night" type="checkbox" checked> Day / night cycle</label><label>Build budget ($)<input id="scenario-budget" type="number" min="0" max="500000" step="1000" value="100000"></label></fieldset><div class="free-actions"><button id="free-design">Edit streets</button><button id="free-results">View impact</button></div>`);
 $('#av').closest('label').hidden=true; // AV controls disabled for now; model effects and vehicle markers are also disabled.
 for(const id of ['closed-road','pothole-road','scenario-budget'])$('#'+id).closest('label').classList.add('game-condition');
 $('#condition-controls').insertAdjacentHTML('beforeend','<section class="free-hazards"><h3>Place road conditions</h3><p>Click a blue road to place a pothole, or close a full block with barriers at both ends. Repeat to add more.</p><div class="hazard-actions"><button id="add-pothole" type="button">Add pothole</button><button id="add-closure" type="button">Add road closure</button><button id="cancel-hazard" type="button" hidden>Done placing</button></div><p id="hazard-status" role="status"></p><ul id="hazard-list"></ul><button id="clear-hazards" type="button">Clear placed conditions</button></section>');
@@ -961,6 +962,8 @@ function syncModeControls(){
     }
     const c=settings.conditions;
     $('#weather').value=c.weather;
+    if(c.weatherObservation)$('#weather-date').value=c.weatherObservation.date;
+    $('#weather-source').textContent=c.weatherObservation?`${c.weatherObservation.date}: ${WEATHER[c.weather].label}, ${c.weatherObservation.temperatureF}°F daily mean, ${c.weatherObservation.precipitationIn} in precipitation. ${WEATHER_DATA.source}. ${WEATHER_DATA.site}. Historical reanalysis, not live weather. Driving adjustments are assumptions.`:'Driving adjustments use shared weather profiles: slower speeds, longer following gaps and reduced braking in bad weather. Engineering assumptions, not calibrated crash predictions.';
     $('#closed-road').value=c.closure?c.closure.intersection+'/'+c.closure.zone:'';
     $('#pothole-road').value=c.pothole?c.pothole.intersection+'/'+c.pothole.zone:'';
     $('#start-hour').value=c.hour;$('#hour-value').textContent=String(c.hour).padStart(2,'0')+':00';
@@ -999,17 +1002,24 @@ $('#exit-game').onclick=()=>{
 };
 $('#free-design').onclick=()=>openPanel('design');$('#free-results').remove();
 for(const button of document.querySelectorAll('.return-simulation'))button.onclick=()=>openPanel('simulation');
-function changeConditions(){
+function changeConditions(event){
     if(gameMode||running)return;
     const parse=id=>{const value=$('#'+id).value;if(!value)return null;const [intersection,zone]=value.split('/');return{intersection,zone};};
     const budget=Number($('#scenario-budget').value);
     if(!Number.isFinite(budget)||budget<costOf(items)||budget<0||budget>500000){$('#scenario-budget').value=budgetLimit;return toast('Budget must cover current upgrades and be between $0 and $500,000.');}
     budgetLimit=budget;settings.budget=budget;
-    settings.conditions={...settings.conditions,weather:$('#weather').value,closure:parse('closed-road'),pothole:parse('pothole-road'),hour:Number($('#start-hour').value),dayNight:$('#day-night').checked};
+    settings.conditions={...settings.conditions,weatherObservation:event?.target?.id==='weather'?null:settings.conditions.weatherObservation,weather:$('#weather').value,closure:parse('closed-road'),pothole:parse('pothole-road'),hour:Number($('#start-hour').value),dayNight:$('#day-night').checked};
     markDirty();syncModeControls();
 }
 for(const id of ['weather','closed-road','pothole-road','start-hour','day-night','scenario-budget'])$('#'+id).addEventListener('change',changeConditions);
 $('#start-hour').addEventListener('input',()=>$('#hour-value').textContent=String($('#start-hour').value).padStart(2,'0')+':00');
+$('#apply-weather-date').onclick=()=>{
+    if(gameMode||running)return;
+    const observation=historicalWeather($('#weather-date').value);
+    if(!observation)return toast('Choose a recorded date between 2019 and 2025.');
+    settings.conditions={...settings.conditions,weather:observation.weather,weatherObservation:observation};
+    markDirty();syncModeControls();
+};
 syncModeControls();
 
 function setHazardTool(type){

@@ -118,9 +118,7 @@ silently simulate invented weather.
   from the requested intersection, and both MVP intersections fall in nearly the
   same cell, so between-intersection weather differences are not meaningful.
   Requested and returned coordinates are both recorded in `data/catalog.yaml`.
-- **No SUMO run has confirmed this end to end.** The pure functions are tested;
-  nobody has yet verified that SUMO accepts the generated vType or that TTC
-  events actually shift. Run `uv sync` first, then a clear and a snow scenario.
+- **Clear and snow SUMO integration smoke checks pass.** The generated vehicle types and paired replays run successfully. This verifies integration, not calibration or a statistically established change in TTC events.
 
 ## Integration with the simulation
 
@@ -134,3 +132,26 @@ Two small hooks outside this folder, both importing from `weather`:
 ```python
 Scenario("fifth-meyran", weather="snow")
 ```
+
+## Frontend integration
+
+Simulation settings now include **Historical weather date → Use historical weather**.
+The offline bundle contains 2,557 daily Fifth/Meyran records (2019–2025), used as
+an explicitly labeled regional proxy for campus. The selected day sets one
+condition for the entire paired comparison; this is not live weather or an
+hour-by-hour reconstruction. Manual weather changes clear the historical label.
+Snow classification uses the source normalizer's 0.1-inch daily threshold;
+freezing temperature alone does not establish icy pavement.
+
+Rebuild after updating the source data or profiles:
+
+```bash
+python frontend/scripts/export-weather.py
+```
+
+The frontend shares backend speed and capacity factors, follows longer gaps,
+and brakes/accelerates more gently in adverse conditions. The local conflict
+score retains its illustrative coefficients; historical weather does not turn
+it into a calibrated crash forecast. SUMO receives the same selected weather
+in baseline and modified scenarios, applies the existing vehicle/pedestrian
+profiles, and caches each weather condition separately.

@@ -170,6 +170,7 @@ def get_scenario_state(
     ttc_thresholds_s: tuple[float, ...] = (1.5, 3.0),
     pedestrians_per_hour: float = 60.0,
     vehicle_demand_vehicles_per_hour: float | None = None,
+    weather: str = "clear",
     force_refresh: bool = False,
     cache_root: Path | None = None,
     runner: ScenarioRunner | None = None,
@@ -179,6 +180,7 @@ def get_scenario_state(
         intersection_id,
         tuple(intervention_from_config(item) for item in interventions),
         vehicle_demand_vehicles_per_hour=vehicle_demand_vehicles_per_hour,
+        weather=weather,
     )
     parameters = _cache_parameters(
         scenario,
