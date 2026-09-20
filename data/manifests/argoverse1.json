@@ -1,0 +1,30 @@
+{
+  "name": "Argoverse 1.1 Motion Forecasting Dataset",
+  "id": "argoverse1",
+  "version": "1.1",
+  "source": "Argoverse official download page",
+  "source_url": "https://www.argoverse.org/av1.html",
+  "download_url": "https://www.argoverse.org/av1.html",
+  "license": "CC BY-NC-SA 4.0",
+  "license_url": "https://creativecommons.org/licenses/by-nc-sa/4.0/",
+  "citation": "Chang, M.-F. et al. Argoverse: 3D Tracking with Forecasting and Rich Maps. CVPR, 2019.",
+  "download_size": "676,626,946 bytes (645 MiB) for the default validation-plus-maps calibration bundle; 5,146,522,104 bytes (4.79 GiB) for all full-release archives.",
+  "size": "645 MiB default; 4.79 GiB with --full",
+  "estimated_extracted_size": "About 1.5 GiB for the default bundle; reserve 10 GiB for the full release.",
+  "recommended_for_hackathon": "yes",
+  "required_credentials": "None.",
+  "status": "downloadable",
+  "local_path": "data/sources/argoverse1/downloads/",
+  "geographic_coverage": "Miami and Pittsburgh; 86 linear km of Pittsburgh lane coverage documented by Argoverse.",
+  "pittsburgh_coverage": "Yes: Downtown, Strip District, and Lower Lawrenceville are documented Pittsburgh areas.",
+  "summary": "The default bundle is the 10 Hz validation split plus official HD maps: enough tracks to estimate distributions and interaction proxies without downloading training data. A separate five-scenario sample is retained for smoke tests. The full 324,557-scenario release remains available with --full.",
+  "calibration_fields": ["object trajectories", "timestamps", "agent/AV identity", "lane centerlines", "traffic-control and intersection attributes"],
+  "artifacts": [
+    {"name": "forecasting_sample", "download_url": "https://s3.amazonaws.com/argoverse/datasets/av1.1/tars/forecasting_sample_v1.1.tar.gz", "filename": "forecasting_sample_v1.1.tar.gz", "bytes": 82913, "checksum": null, "sample_only": true},
+    {"name": "hd_maps", "download_url": "https://s3.amazonaws.com/argoverse/datasets/av1.1/tars/hd_maps.tar.gz", "filename": "hd_maps.tar.gz", "bytes": 16960859, "checksum": null, "include_sample": true},
+    {"name": "validation", "download_url": "https://s3.amazonaws.com/argoverse/datasets/av1.1/tars/forecasting_val_v1.1.tar.gz", "filename": "forecasting_val_v1.1.tar.gz", "bytes": 659666087, "checksum": null},
+    {"name": "train", "download_url": "https://s3.amazonaws.com/argoverse/datasets/av1.1/tars/forecasting_train_v1.1.tar.gz", "filename": "forecasting_train_v1.1.tar.gz", "bytes": 3751225856, "checksum": null, "full_only": true},
+    {"name": "test", "download_url": "https://s3.amazonaws.com/argoverse/datasets/av1.1/tars/forecasting_test_v1.1.tar.gz", "filename": "forecasting_test_v1.1.tar.gz", "bytes": 719000302, "checksum": null, "full_only": true}
+  ],
+  "notes": "Version 1.1 is selected over deprecated 1.0. Default download is validation plus HD maps; --sample selects the five-scenario official sample and --full adds train/test. No checksum is published; archive byte length is verified. Sensor/stereo collections are not selected because the project does not process LiDAR or imagery."
+}

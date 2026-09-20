@@ -1,0 +1,28 @@
+{
+  "name": "Argoverse 2 Motion Forecasting Dataset",
+  "id": "argoverse2",
+  "version": "Argoverse 2 (NeurIPS 2021 release)",
+  "source": "Argoverse official download page",
+  "source_url": "https://www.argoverse.org/av2.html",
+  "download_url": "https://argoverse.github.io/user-guide/getting_started.html",
+  "license": "CC BY-NC-SA 4.0",
+  "license_url": "https://creativecommons.org/licenses/by-nc-sa/4.0/",
+  "citation": "Wilson, B. et al. Argoverse 2: Next Generation Datasets for Self-driving Perception and Forecasting. NeurIPS Datasets and Benchmarks, 2021.",
+  "download_size": "61,673,610,320 bytes (57.44 GiB) for the complete Motion Forecasting release; no official mini/subset release was located.",
+  "size": "57.44 GiB complete release; 0 bytes by default",
+  "estimated_extracted_size": "At least 57.44 GiB; reserve 115 GiB for archives plus extracted files.",
+  "recommended_for_hackathon": "no",
+  "required_credentials": "None. Official guidance states no AWS account is required.",
+  "status": "downloadable",
+  "local_path": "data/sources/argoverse2/downloads/",
+  "geographic_coverage": "Austin, Detroit, Miami, Pittsburgh, Palo Alto, and Washington, DC; individual archive membership must be inspected after download to identify Pittsburgh scenarios.",
+  "pittsburgh_coverage": "Yes, but city labels should be verified from downloaded scenario metadata before calibration.",
+  "summary": "250,000 11-second, 10 Hz multi-agent motion scenarios with 2D centroids, headings, object classes, and local HD maps. It is valuable future research data but too large for the hackathon default.",
+  "calibration_fields": ["track trajectories", "timestamps", "headings", "object type", "local lane/crosswalk geometry", "agent category"],
+  "artifacts": [
+    {"name": "train", "download_url": "https://s3.amazonaws.com/argoverse/datasets/av2/tars/motion-forecasting/train.tar", "filename": "train.tar", "bytes": 50873856000, "checksum": null, "full_only": true},
+    {"name": "validation", "download_url": "https://s3.amazonaws.com/argoverse/datasets/av2/tars/motion-forecasting/val.tar", "filename": "val.tar", "bytes": 6364764160, "checksum": null, "full_only": true},
+    {"name": "test", "download_url": "https://s3.amazonaws.com/argoverse/datasets/av2/tars/motion-forecasting/test.tar", "filename": "test.tar", "bytes": 4447068160, "checksum": null, "full_only": true}
+  ],
+  "notes": "Official direct archives are used only with --full. No checksum is published; archive byte length is verified. The much larger AV2 sensor/lidar/map-change collections are intentionally out of scope because this pipeline does not process LiDAR."
+}

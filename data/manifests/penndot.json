@@ -1,0 +1,23 @@
+{
+  "name": "PennDOT Highly Automated Vehicle Certificate Holders",
+  "id": "penndot",
+  "version": "Live public registry; retrieval date is recorded by summarize.py",
+  "source": "PennDOT Certificate Holders official page",
+  "source_url": "https://www.pa.gov/agencies/penndot/research-planning-and-innovation/automated-vehicle/certificate-holders",
+  "download_url": null,
+  "license": "Government informational page; no dataset license or structured download published.",
+  "citation": "Pennsylvania Department of Transportation, Certificate Holders, accessed 2026-09-20.",
+  "download_size": "Not applicable; no official structured CSV/JSON/GeoJSON endpoint was located.",
+  "size": "Not applicable",
+  "estimated_extracted_size": "Not applicable",
+  "recommended_for_hackathon": "no — context only, not behavioral calibration data",
+  "required_credentials": "None for the public registry page.",
+  "status": "reference_only",
+  "local_path": "data/sources/penndot/downloads/",
+  "geographic_coverage": "Pennsylvania; includes current certificate holders and stated operations locations, including Pittsburgh for several holders.",
+  "pittsburgh_coverage": "Yes as a registry context layer, not trajectory or behavior data.",
+  "summary": "Useful for documenting legally reported AV testing presence and stated operating areas. It does not contain trajectories, AV behavior telemetry, maps, pedestrian/cyclist observations, or a structured download; the pipeline does not scrape the HTML table.",
+  "calibration_fields": [],
+  "artifacts": [],
+  "notes": "If PennDOT publishes a structured endpoint later, add it as an explicit artifact after confirming its provenance and license."
+}

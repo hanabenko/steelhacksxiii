@@ -1,0 +1,23 @@
+{
+  "name": "DENSO Pittsburgh Innovation Lab / City of Pittsburgh Perception Data Set",
+  "id": "denso",
+  "version": "Not published on the official project page",
+  "source": "DENSO Pittsburgh Innovation Lab official dataset page",
+  "source_url": "https://www.denso.com/us-ca/en/business/PittsburghLab/Data/",
+  "download_url": null,
+  "license": "Not published on the official project page; obtain terms from DENSO before use.",
+  "citation": "DENSO Pittsburgh Innovation Lab, City of Pittsburgh Perception Data Set, accessed 2026-09-20.",
+  "download_size": "Not published",
+  "size": "Not published",
+  "estimated_extracted_size": "Not published",
+  "recommended_for_hackathon": "no — access is manual and terms are not public",
+  "required_credentials": "Manual access: contact support@pittsburghinnovationlab.com. The official page currently exposes no downloadable archive URL.",
+  "status": "restricted",
+  "local_path": "data/sources/denso/downloads/",
+  "geographic_coverage": "17 diverse routes in the Pittsburgh area; the official page describes it as Downtown Pittsburgh data.",
+  "pittsburgh_coverage": "Yes; primary Pittsburgh source once access and license are confirmed.",
+  "summary": "360,000 synchronized 10 Hz frames; 36,000 frames (10%) have 3D bounding boxes for vehicles, pedestrians, and cyclists. Sensor descriptions include six cameras, seven SPAD LiDARs, GPS, and CAN/vehicle dynamics. No data is downloaded automatically.",
+  "calibration_fields": ["GPS/localization", "vehicle dynamics", "10 Hz temporal alignment", "3D boxes for vehicles/pedestrians/cyclists", "route context"],
+  "artifacts": [],
+  "notes": "This pipeline deliberately does not scrape or infer a download URL. After receiving a licensed archive, place it in downloads/ and add its checksum locally or update this manifest through review."
+}

@@ -1,0 +1,23 @@
+{
+  "name": "CMU Scenario-based Database for Connected and Autonomous Driving in a Smart City",
+  "id": "cmu",
+  "version": "Traffic21 project #275 (completed 2019)",
+  "source": "CMU Traffic21 project page",
+  "source_url": "https://ppms.cit.cmu.edu/projects/detail/275",
+  "download_url": null,
+  "license": "No public dataset license or downloadable archive located on the official project page.",
+  "citation": "Zhao, D. A Scenario-based Database for Connected and Autonomous Driving in A Smart City, CMU Traffic21 project #275, 2019.",
+  "download_size": "Not applicable; public project reports are available, but no scenario-data archive is published.",
+  "size": "Not applicable",
+  "estimated_extracted_size": "Not applicable",
+  "recommended_for_hackathon": "no — no public dataset archive",
+  "required_credentials": "Restricted/unknown. Contact project PI Ding Zhao at dingzhao@cmu.edu for dataset availability and terms.",
+  "status": "restricted",
+  "local_path": "data/sources/cmu/downloads/",
+  "geographic_coverage": "Pittsburgh; planned heterogeneous capture included lidar, camera, radar, GPS, IMU, vehicle controls, and smart-city signals/weather/events.",
+  "pittsburgh_coverage": "Project-specific Pittsburgh coverage was proposed; exact released coverage is not public.",
+  "summary": "The public project record and reports describe a planned scenario library, not a downloadable data release. It may be highly relevant to interaction-scenario calibration, but must not be represented as public data.",
+  "calibration_fields": ["potential multi-agent trajectories", "GPS", "vehicle controls", "traffic-light and weather context", "pedestrian/cyclist interactions"],
+  "artifacts": [],
+  "notes": "Record papers/project materials only. Do not scrape traffic-net.org or restricted CMU systems."
+}

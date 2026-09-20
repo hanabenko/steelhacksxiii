@@ -1,0 +1,5 @@
+{
+  "schema_version": 1,
+  "purpose": "Manifest index for reproducible Pittsburgh AV calibration-source acquisition. Large downloads are excluded from Git.",
+  "datasets": ["argoverse2", "argoverse1", "denso", "cmu", "penndot"]
+}
