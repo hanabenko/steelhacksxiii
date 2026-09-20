@@ -1,0 +1,44 @@
+{
+  "intersection_id": "pitt-forbes-bigelow",
+  "name": "Forbes Avenue & Bigelow Boulevard",
+  "center": {
+    "longitude": -79.9535474,
+    "latitude": 40.4431909
+  },
+  "target_sumo_junction": "cluster_105013345_6715675240_6715675241_6715675242_#1more",
+  "traffic_light_id": "cluster_105013345_6715675240_6715675241_6715675242_#1more",
+  "source": {
+    "type": "OpenStreetMap extract",
+    "source_url": "https://www.openstreetmap.org/node/105013345",
+    "license": "ODbL-1.0",
+    "attribution": "© OpenStreetMap contributors",
+    "retrieved": "2026-09-19"
+  },
+  "approaches": {
+    "north": {
+      "incoming_edge": "926031004#0",
+      "lanes": ["926031004#0_0", "926031004#0_1", "926031004#0_2"],
+      "street_name": "Bigelow Boulevard"
+    },
+    "south": {
+      "incoming_edge": "11734068#3",
+      "lanes": ["11734068#3_0", "11734068#3_1"],
+      "street_name": "Schenley Drive"
+    },
+    "west": {
+      "incoming_edge": "714429624#4",
+      "lanes": ["714429624#4_0", "714429624#4_1", "714429624#4_2", "714429624#4_3"],
+      "street_name": "Forbes Avenue"
+    },
+    "east": {
+      "incoming_edge": null,
+      "lanes": [],
+      "street_name": "Forbes Avenue",
+      "note": "The imported junction is three-legged; east is an outbound-only Forbes leg and cannot accept an approach intervention."
+    }
+  },
+  "calibration": {
+    "default": "Uses the existing Fifth/Meyran Pittsburgh traffic observation until a complete Forbes/Bigelow observation is imported.",
+    "fallback_intersection_id": "fifth-meyran"
+  }
+}

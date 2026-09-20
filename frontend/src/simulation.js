@@ -32,3 +32,28 @@ export async function runSimulation(items, settings, { endpoint = '', fetchImpl 
   for(const site of INTERSECTIONS){const value=result.intersections.find(entry=>entry.id===site.id);if(!value)throw new Error('Backend is missing '+site.name);validateResult(value);}
   return result;
 }
+
+/** Load the simulation-owned baseline contract used by the 3D replay player. */
+export async function runBaselineReplay({ endpoint = '', fetchImpl = globalThis.fetch, signal } = {}) {
+  if (!endpoint) return null;
+  const response = await fetchImpl(endpoint, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    signal,
+    body: JSON.stringify({
+      schemaVersion: 2,
+      intersection: 'pitt-forbes-bigelow',
+      upgrades: [],
+      settings: { runs: 50, av: 0 },
+      seed: 42,
+    }),
+  });
+  if (!response.ok) throw new Error(`Baseline simulation server returned HTTP ${response.status}.`);
+  const value = await response.json();
+  if (value.error) throw new Error(value.error.message || 'Baseline simulation was rejected.');
+  const replay = value.baseline?.representative_replay;
+  if (value.contract_version !== 1 || !replay || !Array.isArray(replay.frames)) {
+    throw new Error('Baseline response is missing the versioned representative replay contract.');
+  }
+  return value;
+}

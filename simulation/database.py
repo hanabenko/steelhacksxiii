@@ -13,7 +13,11 @@ from simulation.models import AggregateSample, Calibration, RunMetrics, TTCEvent
 from simulation.safety import SafetyConfig
 
 
-def load_calibration(conn: Any, intersection_id: str) -> Calibration:
+def load_calibration(
+    conn: Any,
+    intersection_id: str,
+    fallback_intersection_id: str | None = None,
+) -> Calibration:
     row = conn.execute(
         """
         SELECT source_record_id, average_daily_car_traffic, median_speed_mph,
@@ -29,6 +33,22 @@ def load_calibration(conn: Any, intersection_id: str) -> Calibration:
         """,
         (intersection_id,),
     ).fetchone()
+    if not row and fallback_intersection_id:
+        row = conn.execute(
+            """
+            SELECT source_record_id, average_daily_car_traffic, median_speed_mph,
+                   p85_speed_mph, speed_limit_mph
+            FROM traffic_observations
+            WHERE intersection_id = %s
+              AND average_daily_car_traffic IS NOT NULL
+              AND median_speed_mph IS NOT NULL
+              AND p85_speed_mph IS NOT NULL
+              AND speed_limit_mph IS NOT NULL
+            ORDER BY observed_at DESC
+            LIMIT 1
+            """,
+            (fallback_intersection_id,),
+        ).fetchone()
     if not row:
         raise RuntimeError(f"No complete traffic calibration record for {intersection_id}")
     return Calibration(
@@ -38,6 +58,37 @@ def load_calibration(conn: Any, intersection_id: str) -> Calibration:
         p85_speed_mph=float(row["p85_speed_mph"]),
         speed_limit_mph=float(row["speed_limit_mph"]),
     )
+
+
+def ensure_intersection_record(conn: Any, spec: Any) -> None:
+    """Ensure SUMO-only frontend targets can satisfy existing FK constraints.
+
+    This is data registration, not a schema migration. Existing curated intersection
+    rows are left untouched.
+    """
+    if not spec.candidate_id:
+        return
+    conn.execute(
+        """
+        INSERT INTO intersections (
+            intersection_id, candidate_id, name, signal_operation_type,
+            longitude, latitude, coverage_score, safety_priority_score,
+            selection_reason, source_metadata
+        ) VALUES (%s, %s, %s, %s, %s, %s, 0, 0, %s, %s)
+        ON CONFLICT (intersection_id) DO NOTHING
+        """,
+        (
+            spec.intersection_id,
+            spec.candidate_id,
+            " / ".join(spec.street_names),
+            "static SUMO import",
+            spec.longitude,
+            spec.latitude,
+            "Registered by simulation network import for the frontend integration contract.",
+            Jsonb({"network_source": "OpenStreetMap", "calibration_fallback_intersection_id": spec.calibration_fallback_intersection_id}),
+        ),
+    )
+    conn.commit()
 
 
 def create_run(
@@ -184,3 +235,43 @@ def mark_failed(conn: Any, run_id: uuid.UUID) -> None:
         (run_id,),
     )
     conn.commit()
+
+
+def load_run_replay_rows(
+    conn: Any, run_id: str
+) -> tuple[int, list[float], list[dict[str, Any]]]:
+    """Load the persisted part of a replay without exposing SQL to callers."""
+    run = conn.execute(
+        """
+        SELECT (simulation_config->>'duration_s')::integer AS duration_s
+        FROM simulation_runs
+        WHERE run_id = %s AND status = 'completed'
+        """,
+        (run_id,),
+    ).fetchone()
+    if not run:
+        raise RuntimeError(f"Completed simulation run {run_id} was not found")
+    frame_times = [
+        float(row["simulation_time_s"])
+        for row in conn.execute(
+            """
+            SELECT simulation_time_s
+            FROM simulation_samples
+            WHERE run_id = %s
+            ORDER BY simulation_time_s
+            """,
+            (run_id,),
+        ).fetchall()
+    ]
+    vehicle_rows = list(
+        conn.execute(
+            """
+            SELECT vehicle_id, simulation_time_s, x, y, longitude, latitude, speed_mps
+            FROM vehicle_states
+            WHERE run_id = %s
+            ORDER BY simulation_time_s, vehicle_id
+            """,
+            (run_id,),
+        ).fetchall()
+    )
+    return int(run["duration_s"]), frame_times, vehicle_rows

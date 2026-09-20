@@ -23,6 +23,8 @@ conservative average-hour demand rather than a complete intersection turning cou
 - `signals.py` maps game-friendly signal allocations onto SUMO signal phases.
 - `monte_carlo.py` runs independently seeded repetitions.
 - `compare.py` runs baseline and intervention scenarios with identical seed lists.
+- `frontend_contract.py` translates the supported frontend request subset into
+  truthful SUMO scenario states without importing game scoring or Three.js concepts.
 
 No Monte Carlo summary table is needed: every individual run is persisted in the existing schema,
 and aggregate distributions are returned as JSON. Per-run summary metrics are also stored under
@@ -91,6 +93,109 @@ aggregate distributions (mean, median, standard deviation, p5, p25, p75, and p95
 summaries, deterministic seeds, and persisted Tiger run IDs. Intervention dictionaries are also
 accepted, for example `{"type": "signal_timing", "main_green_s": 45,
 "side_green_s": 25}`.
+
+## Baseline-state contract
+
+Frontend and game callers that need aggregates plus an immediately playable replay should use:
+
+```python
+from simulation import get_baseline_state
+
+baseline = get_baseline_state(
+    intersection_id="fifth-meyran",
+    runs=50,
+    seed=42,
+)
+```
+
+The JSON-serializable result has four main sections:
+
+- `intersection`: stable identity, street names, map center, and scenario configuration;
+- `aggregate_metrics`: Monte Carlo distributions and separate vehicle–vehicle and
+  vehicle–pedestrian safety summaries;
+- `representative_run`: a persisted run ID, seed, metrics, selection metadata, and plain replay
+  frames containing vehicle and pedestrian agents;
+- `assumptions`: duration, seed list, configurable TTC thresholds, pedestrian-demand assumption,
+  and replay provenance.
+
+The representative replay is never an averaged or fabricated trajectory. For each run, the engine
+forms a vector from speed, throughput/completions, delay, pedestrian wait/completions, and both TTC
+event-count categories. It calculates the cross-run median of each metric, normalizes differences by
+that metric's observed range, and selects the real run with the smallest Euclidean distance. Ties
+are resolved by seed and then run ID, making selection deterministic.
+
+Vehicle replay coordinates come from the existing Tiger `vehicle_states` rows; headings are derived
+from consecutive coordinates because that table does not store headings. Pedestrian positions and
+headings are captured in a temporary compressed simulation artifact, merged into the representative
+replay, and then discarded. No Three.js concepts or database records appear in replay frames.
+
+The completed state is atomically cached under ignored `simulation/cache/scenario_states/` using a
+key that includes the scenario, run count, seed, duration, TTC thresholds, and pedestrian demand.
+Repeated calls load that file without SUMO or Tiger access. Pass `force_refresh=True` to regenerate
+it intentionally. `get_scenario_state(...)` provides the same shape for modified scenarios, so a
+future game layer can pair baseline and intervention states without changing its replay renderer.
+
+Precompute or intentionally refresh the default cache during development/deployment with:
+
+```bash
+uv run python -m simulation.baseline \
+  --intersection fifth-meyran \
+  --runs 50 \
+  --seed 42 \
+  --force-refresh
+```
+
+## Frontend integration contract
+
+The simulation-owned adapter currently supports one shared frontend/SUMO target:
+**Forbes Avenue & Bigelow Boulevard** (`pitt-forbes-bigelow`). Its checked-in OSM
+source, SUMO network, stable target junction, traffic-light ID, edge/lane lists, and
+approach mapping live under `simulation/networks/pitt-forbes-bigelow/`. This imported
+junction has incoming north (Bigelow), south (Schenley), and west (Forbes) approaches.
+Its east Forbes leg is outbound-only, so a request that requires an eastbound approach
+intervention must be rejected by a future geometry intervention implementation.
+
+Use the package API; no caller needs TraCI, Tiger Data, or SUMO file paths:
+
+```python
+from simulation import simulate_frontend_scenario
+
+result = simulate_frontend_scenario(
+    {
+        "schemaVersion": 2,
+        "intersection": "pitt-forbes-bigelow",
+        "seed": 42,
+        "settings": {"runs": 50, "demand": 120, "green": 35, "av": 0},
+        "upgrades": [{"type": "signal", "zone": "west"}],
+    }
+)
+```
+
+Successful results have `contract_version: 1` and contain `intersection`, `baseline`,
+`modified`, `delta`, `matched_seeds`, `assumptions`, and `translation`. Both scenarios
+contain explicit-unit physical distributions and a replay selected from a real persisted
+SUMO run. Replay payloads include one-second frames, WGS84 coordinates plus raw SUMO
+meters, stable vehicle/pedestrian IDs, signal-state timelines, and TTC conflict-event
+timelines. They deliberately contain no Three.js projection, game score, budget,
+objective, or pedestrian-access index.
+
+`settings.demand` is a deterministic vehicle-arrival override in vehicles/hour. Omit it
+to retain the cached observation-calibrated baseline. Forbes/Bigelow does not yet have a
+complete local traffic-count record in Tiger Data, so its calibrated default explicitly
+uses the existing Fifth/Meyran observation until local calibration is loaded; this
+provenance is returned as an assumption and is not presented as Forbes/Bigelow data.
+
+Only smart-signal and internal speed-limit changes are supported. The legacy frontend
+`signal` upgrade maps to `SignalTimingChange`; with only `settings.green`, the adapter
+uses that duration for both principal green phases. Raised crosswalks, bike lanes, curb
+extensions, road diets, and any AV percentage greater than zero return a JSON error with
+an explicit code such as `unsupported_intervention` or `unsupported_av_behavior`. They
+are never silently ignored.
+
+For an unmodified request, the adapter reuses `get_baseline_state(...)` and its cache.
+For a modified request, baseline and modified scenarios share the same deterministic
+per-run seed list. TTC output is labeled as a constant-velocity simulation conflict
+surrogate—not a predicted crash count.
 
 ## TTC analysis
 

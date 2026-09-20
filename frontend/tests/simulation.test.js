@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { runSimulation, validateResult } from '../src/simulation.js';
+import { runBaselineReplay, runSimulation, validateResult } from '../src/simulation.js';
 import { DEFAULT_SETTINGS, simulate, simulateNetwork } from '../src/model.js';
 import fs from 'node:fs';
 
@@ -26,6 +26,21 @@ test('backend failures and invalid payloads do not masquerade as local results',
   await assert.rejects(runSimulation([], DEFAULT_SETTINGS, { endpoint: '/simulate', fetchImpl: async () => ({ ok: true, json: async () => ({}) }) }), /provenance/);
   const invalid = simulate([]); invalid.after.risk.mean = NaN;
   assert.throws(() => validateResult(invalid), /after.risk/);
+});
+test('baseline contract request returns the representative replay payload', async () => {
+  const expected = {
+    contract_version: 1,
+    baseline: { representative_replay: { duration_s: 10, frames: [] } },
+  };
+  const result = await runBaselineReplay({ endpoint: '/simulate', fetchImpl: async (url, options) => {
+    assert.equal(url, '/simulate');
+    const body = JSON.parse(options.body);
+    assert.equal(body.intersection, 'pitt-forbes-bigelow');
+    assert.deepEqual(body.upgrades, []);
+    assert.equal(body.settings.av, 0);
+    return { ok: true, json: async () => expected };
+  } });
+  assert.equal(result, expected);
 });
 test('real map extract retains source, intersection coordinates, and valid geometries', () => {
   const map = JSON.parse(fs.readFileSync(new URL('../src/data/intersection.json', import.meta.url)));

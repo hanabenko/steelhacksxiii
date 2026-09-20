@@ -23,6 +23,7 @@ class DemandPlan:
     driver_sigma: float
     speed_factor_mean: float
     speed_factor_deviation: float
+    demand_source: str = "traffic_observation"
 
     def to_dict(self) -> dict[str, float | int | str]:
         return self.__dict__.copy()
@@ -112,9 +113,14 @@ def write_routes(
         ET.SubElement(root, "route", {"id": f"crossing_{index}", "edges": " ".join(edges)})
 
     last_departure = max(0.0, duration_s - 120.0)
+    hourly_traffic = (
+        scenario.vehicle_demand_vehicles_per_hour
+        if scenario.vehicle_demand_vehicles_per_hour is not None
+        else calibration.average_hourly_traffic
+    )
     departures = _poisson_departures(
         randomizer,
-        calibration.average_hourly_traffic,
+        hourly_traffic,
         last_departure,
         ensure_one=True,
     )
@@ -193,9 +199,12 @@ def write_routes(
         vehicle_count=len(departures),
         pedestrian_count=len(pedestrian_departures),
         arrival_model="poisson_exponential_interarrival",
-        average_hourly_traffic=calibration.average_hourly_traffic,
+        average_hourly_traffic=hourly_traffic,
         assumed_pedestrians_per_hour=pedestrian_config.pedestrians_per_hour,
         driver_sigma=driver_sigma,
         speed_factor_mean=median_factor,
         speed_factor_deviation=speed_deviation,
+        demand_source=(
+            "scenario_override" if scenario.vehicle_demand_vehicles_per_hour is not None else "traffic_observation"
+        ),
     )

@@ -6,10 +6,11 @@ import gzip
 import json
 import math
 from collections import defaultdict
+from itertools import pairwise
 from pathlib import Path
 from typing import Any
 
-from simulation.models import PedestrianState
+from simulation.models import PedestrianState, TTCEvent
 
 
 def pedestrian_agent(state: PedestrianState) -> dict[str, Any]:
@@ -30,11 +31,22 @@ def write_pedestrian_replay(
     destination: Path,
     duration_s: int,
     states: list[dict[str, Any]],
+    *,
+    signal_states: list[dict[str, Any]] | None = None,
+    safety_events: list[dict[str, Any]] | None = None,
 ) -> Path:
     destination.parent.mkdir(parents=True, exist_ok=True)
     temporary = destination.with_suffix(destination.suffix + ".tmp")
     with gzip.open(temporary, "wt", encoding="utf-8") as handle:
-        json.dump({"duration_s": duration_s, "states": states}, handle)
+        json.dump(
+            {
+                "duration_s": duration_s,
+                "states": states,
+                "signal_states": signal_states or [],
+                "safety_events": safety_events or [],
+            },
+            handle,
+        )
     temporary.replace(destination)
     return destination
 
@@ -44,6 +56,37 @@ def read_pedestrian_replay(path: Path | None) -> list[dict[str, Any]]:
         return []
     with gzip.open(path, "rt", encoding="utf-8") as handle:
         return list(json.load(handle)["states"])
+
+
+def read_replay_artifact(path: Path | None) -> dict[str, Any]:
+    """Read simulation-owned supplemental replay data, with v1 compatibility."""
+    if path is None or not path.exists():
+        return {"states": [], "signal_states": [], "safety_events": []}
+    with gzip.open(path, "rt", encoding="utf-8") as handle:
+        payload = json.load(handle)
+    return {
+        "states": list(payload.get("states", [])),
+        "signal_states": list(payload.get("signal_states", [])),
+        "safety_events": list(payload.get("safety_events", [])),
+    }
+
+
+def safety_event_agent(event: TTCEvent, longitude: float, latitude: float) -> dict[str, Any]:
+    category = "vehicle_pedestrian" if "pedestrian" in {
+        event.actor_a_type,
+        event.actor_b_type,
+    } else "vehicle_vehicle"
+    return {
+        "t": event.simulation_time_s,
+        "type": "ttc_conflict",
+        "category": category,
+        "ttc_s": event.time_to_collision_s,
+        "agents": [event.actor_a_id, event.actor_b_id],
+        "x": event.x,
+        "y": event.y,
+        "longitude": longitude,
+        "latitude": latitude,
+    }
 
 
 def _headings_by_vehicle(rows: list[dict[str, Any]]) -> dict[tuple[str, float], float]:
@@ -73,6 +116,9 @@ def build_replay_payload(
     frame_times: list[float],
     vehicle_rows: list[dict[str, Any]],
     pedestrian_rows: list[dict[str, Any]],
+    *,
+    signal_states: list[dict[str, Any]] | None = None,
+    safety_events: list[dict[str, Any]] | None = None,
 ) -> dict[str, Any]:
     """Merge persisted vehicles and captured pedestrians into plain replay frames."""
     agents_by_time: dict[float, list[dict[str, Any]]] = defaultdict(list)
@@ -105,9 +151,22 @@ def build_replay_payload(
                 if key in {"id", "type", "x", "y", "longitude", "latitude", "heading", "speed_mps"}
             }
         )
-    times = sorted(set(frame_times) | set(agents_by_time))
+    ordered_times = sorted({0.0} | set(frame_times) | set(agents_by_time))
+    intervals = [
+        current - previous
+        for previous, current in pairwise(ordered_times)
+        if current > previous
+    ]
     return {
         "duration_s": duration_s,
+        "frame_interval_s": min(intervals) if intervals else None,
+        "coordinate_system": {
+            "canonical": "WGS84 longitude/latitude",
+            "local": "SUMO network x/y meters",
+            "projection_performed": False,
+        },
+        "signal_states": signal_states or [],
+        "safety_events": safety_events or [],
         "frames": [
             {
                 "t": time_s,
@@ -116,6 +175,6 @@ def build_replay_payload(
                     key=lambda agent: (agent["type"], agent["id"]),
                 ),
             }
-            for time_s in times
+            for time_s in ordered_times
         ],
     }
