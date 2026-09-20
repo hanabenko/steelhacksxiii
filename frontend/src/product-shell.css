@@ -86,3 +86,61 @@ body[data-mode="play"] #results-panel>.section-heading:first-child>:not(.close-p
 #campus-challenge{grid-column:1/-1}
 
 @media(max-width:760px){body[data-mode="play"] .header{gap:8px;padding:0 8px}body[data-mode="play"] .header .brand{font-size:0;gap:0}body[data-mode="play"] .header .brand-dot{display:none}body[data-mode="play"] .header #exit-game{font-size:10px;padding:6px}}
+
+/* Accessible shell palette: keep legacy navy-panel rules off light surfaces. */
+:root { --shell-ink:#233b59; --shell-muted:#4c617b; }
+.panel,#design-panel.build-tray,#simulation-panel,#results-panel {
+  background:#fbfcfe;
+  color:var(--shell-ink);
+  line-height:1.5;
+}
+#design-panel #network-design-status,#design-panel #build-summary,
+#design-panel #budget-receipt,#design-panel .placed-upgrades,
+#design-panel #placed-list li,#design-panel .approaches legend,
+#results-panel .result-scope,#results-panel .objectives strong,
+#simulation-panel .run-row>label,#simulation-panel .seed-tag {
+  color:var(--shell-ink);
+}
+#design-panel .cost-sources { color:#24568c; }
+#results-panel .metric-change.improved { color:#176640; }
+#results-panel .metric-change.worse { color:#a63122; }
+#results-panel .metric-change.neutral { color:var(--shell-muted); }
+#design-panel .tool-card.selected { background:#285687; border-color:#173b64; }
+#design-panel .tool-card.selected .tool-copy,
+#design-panel .tool-card.selected strong,#design-panel .tool-card.selected b { color:#fff; }
+#simulation-panel .run-row { background:transparent; }
+#simulation-panel p,#results-panel p,#design-panel p,
+#simulation-panel small,#results-panel small,#design-panel small { color:var(--shell-muted); }
+.control-group-heading p,.availability-note span,.network-run-note,#traffic-data-note,
+.free-hazards p,#mode-explanation { color:var(--shell-muted)!important; font-size:12px!important; }
+.model-control-group label { font-size:13px!important; }
+.model-control-group .control-group-heading h3 { font-size:15px; }
+.availability-note strong,.unsupported-note,.sumo-study p,.sumo-study summary,
+.unavailable-metrics p,.unavailable-metrics span,#data-button,
+.assistant-heading small,.assistant small,.hud-budget small,
+.challenge-copy>small,.challenge-context dt,.challenge-context dd,
+.game-evaluation p,.game-evaluation small,.navigation-panel summary,
+.scene-legend,.scene-footer,.scene-footer a,.metric-header,.mini-pill {
+  font-size:12px;
+  line-height:1.5;
+}
+.unsupported-note { color:#875025; }
+.sumo-study p,.unavailable-metrics span { color:var(--shell-muted); }
+.header,.location-bar,.scene-legend,.view-tabs,.map-controls { background:#fff; }
+.location-bar p,.location-bar h2 span,.scene-legend,.scene-footer,
+.scene-footer a,.mode-switcher .nav-button { color:var(--shell-muted); }
+.scene-footer { background:#fff; }
+.location-bar p { font-size:12px; }
+.scene-legend { flex-wrap:wrap; }
+body[data-mode="play"] .scenario-banner { background:#192f4e; }
+.challenge-context dt,.game-evaluation small { color:#c4d6ee; }
+button:focus-visible,a:focus-visible,input:focus-visible,select:focus-visible,
+summary:focus-visible { outline:3px solid #176ac6; outline-offset:3px; }
+.scenario-banner :focus-visible { outline-color:#ffda76; }
+input::placeholder { color:#536780; opacity:1; }
+@media(max-width:760px) {
+  .panel,#design-panel.build-tray,#simulation-panel,#results-panel,
+  body[data-mode="play"] .scenario-banner { padding-bottom:76px; }
+  .challenge-context { grid-template-columns:1fr 1fr; }
+  .scene-legend { max-width:calc(100vw - 24px); }
+}

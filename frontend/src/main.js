@@ -222,6 +222,8 @@ simulationGroup.append($('.run-row'));
 const hiddenLegacy=document.createElement('div');hiddenLegacy.className='legacy-condition-controls';hiddenLegacy.hidden=true;hiddenLegacy.append($('#scenario-budget').closest('label'));
 const conditionControls=$('#condition-controls'),modeExplanation=$('#mode-explanation');
 conditionControls.replaceChildren(modeExplanation,modelGroups,hiddenLegacy);
+// Lock challenge inputs without inheriting that lock on the run action.
+conditionControls.after(simulationGroup);
 $('.settings-grid').remove();
 // Move the existing accessible editor controls into one bottom build tray.
 const oldEditor=$('.tools-panel'),buildTray=$('.upgrade-bar');

@@ -88,6 +88,9 @@ for(const width of [1440,390])test(`road repair challenge progresses through nex
  await page.locator(`[data-intersection="${intersection}"][data-zone="${zone}"]`).click();
  await expect(page.locator('#game-score')).toContainText('Hazards addressed: 1/1');
  await page.getByRole('button',{name:'Next: Simulate →',exact:true}).click();await expect(page.locator('#simulation-panel')).toBeVisible();
+ await expect(page.locator('#condition-controls')).toBeDisabled();
+ await expect(page.locator('#weather')).toBeDisabled();
+ await expect(page.locator('#run')).toBeEnabled();
  await page.getByRole('button',{name:'Next: run & view impact →',exact:true}).click();
  await expect(page.locator('#results-panel')).toBeVisible({timeout:15000});await expect(page.locator('#game-score')).toContainText('Score 50/100');
  await expect(page.locator('#change-throughput')).toHaveClass(/improved/);
