@@ -144,7 +144,7 @@ const intersectionOptions = INTERSECTIONS.map(
 ).join("");
 const app = document.querySelector("#app");
 app.innerHTML = `
-  <header class="header"><a class="brand" href="./" aria-label="Interlock home"><span class="brand-mark">${icon("Route")}</span>Interlock<span class="brand-dot">.</span></a><nav class="mode-switcher" aria-label="Product mode"><button class="nav-button" id="play-mode" aria-pressed="false">Play</button><button class="nav-button active" id="model-mode" aria-pressed="true">Model</button></nav><div class="header-secondary"><span class="hud-budget">${icon("Wallet")}<span id="budget-hud">$100,000</span><small>AVAILABLE</small></span><button class="quiet-button icon-button" id="guide-button" aria-label="Help and walkthrough" title="Help and walkthrough">${icon("CircleHelp")}</button><button class="quiet-button" id="settings-button">${icon("SlidersHorizontal")} Settings</button></div></header>
+  <header class="header"><a class="brand" href="./" aria-label="Interlock home"><span class="brand-mark">${icon("Route")}</span>Interlock<span class="brand-dot">.</span></a><nav class="mode-switcher" aria-label="Product mode"><button class="nav-button" id="play-mode" aria-pressed="false">Play</button><button class="nav-button active" id="model-mode" aria-pressed="true">Model</button></nav><div class="header-secondary"><button id="exit-game" hidden aria-label="Exit game and return to main page">Exit game</button><span class="hud-budget">${icon("Wallet")}<span id="budget-hud">$100,000</span><small>AVAILABLE</small></span><button class="quiet-button icon-button" id="guide-button" aria-label="Help and walkthrough" title="Help and walkthrough">${icon("CircleHelp")}</button><button class="quiet-button" id="settings-button">${icon("SlidersHorizontal")} Settings</button></div></header>
   <main>
     <section class="page-heading"><div><div class="eyebrow"><span class="live-dot"></span> BETTER STREETS START HERE</div><h1>A small change. A safer city.</h1><p>Rethink a real intersection. Test the tradeoffs. Find a better way forward.</p></div><button class="outline-button" id="export-button">${icon("Download")} Export scenario</button></section>
     <section class="location-bar"><div class="location-icon">${icon("MapPin")}</div><div><h2>Forbes <span>↔</span> Fifth</h2><p>Pitt campus · Oakland</p></div><span class="location-tag">CAMPUS SANDBOX</span><div class="location-detail">${icon("Map")} <span>Real street geometry<small>OpenStreetMap · illustrative traffic</small></span></div><button class="text-button" id="data-button">Explore the data ${icon("ArrowUpRight")}</button></section>
@@ -633,15 +633,9 @@ function syncResultPresentation(){
     $('.result-heading h2').textContent=gameMode?'Challenge results':'Model results';
     $('.result-scope').firstChild.textContent='View ';
     const headers=$('.metric-header').children;
-<<<<<<< HEAD
-    headers[1].hidden=!gameMode;headers[2].textContent=gameMode?'AFTER':'RESULT';headers[3].hidden=!gameMode;
-    for(const key of ['risk','speed','delay','throughput','pedestrianThroughput','access']){
-        $('#before-'+key).hidden=!gameMode;$('#change-'+key).hidden=!gameMode;
-=======
     headers[1].hidden=false;headers[1].textContent='BASELINE';headers[2].textContent=gameMode?'YOUR DESIGN':'SCENARIO';headers[3].hidden=false;headers[3].textContent='Δ';
-    for(const key of ['risk','speed','delay','throughput','access']){
+    for(const key of ['risk','speed','delay','throughput','pedestrianThroughput','access']){
         $('#before-'+key).hidden=false;$('#change-'+key).hidden=false;
->>>>>>> ae886d41259957d0d60650b3129541fc11679b27
     }
     $('.score-card').hidden=!gameMode;$('#compare').hidden=!gameMode;$('.change-key').hidden=false;
     $('#before-access').closest('.metric-row').hidden=!gameMode;
@@ -842,19 +836,6 @@ $("#data-button").onclick = () =>
         "Real place. Transparent assumptions.",
         `<div class="data-badge">${icon("MapPin")} ${map.center.lat.toFixed(5)}° N, ${Math.abs(map.center.lon).toFixed(5)}° W</div><h3>Street geometry</h3><p>Road centerlines and ${map.features.filter((f) => f.tags.building).length} building footprints from <a href="${map.sourceUrl}" target="_blank" rel="noreferrer">OpenStreetMap contributors</a>, retrieved ${map.retrieved}. Licensed under <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noreferrer">ODbL</a>. OSM building parts, mapped trees, paths, and businesses supplement the footprints. Missing heights, facade details, widths, and signal hardware are illustrative. Road tags may lag real street changes.</p><h3>Campus landmarks</h3><p>Cathedral of Learning and Litchfield Towers use OSM building-part footprints and tagged heights. El Jefe’s is placed at its OSM point of interest at 3807 Forbes Avenue, also listed on <a href="https://eljefestaqueria.com/" target="_blank" rel="noreferrer">the restaurant’s website</a>. Untagged heights, facade decoration, widths, and signal hardware are illustrative. Trees mapped within six meters of signals are omitted to keep them clear.</p><p>The explorable area covers the Forbes–Fifth corridor, from the Towers and Forbes shops to the Cathedral and Heinz Chapel. Upgrade placements cover <strong>Forbes/Bigelow, Fifth/Bigelow, and Forbes/Bouquet</strong> together. Paired local trials combine these three intersections; they do not model rerouting or queue spillback.</p><h3>Simulation provenance</h3><p>Paired seeded Monte Carlo samples vary assumed demand and baseline speed. Upgrade effects are explicit placeholder coefficients. Conflict proxy, access score, and costs are game assumptions. No public crash counts calibrate the game score. Car cruising speeds use a nearby WPRDC Fifth/Meyran observation (2018 median 16 mph, 85th percentile 20 mph). The selected demand remains a scenario assumption. Historical weather uses Open-Meteo ERA5 records; weather behavior adjustments are engineering assumptions.</p><div class="dialog-callout">The SUMO signal study uses the connected Python backend and recorded TraCI replay. Campus simulation and game scores use a separate, uncalibrated local model. The animated TTC marker measures short following gaps in the visual preview, separately from the Monte Carlo model.</div>`,
     );
-<<<<<<< HEAD
-$("#scenarios-button").onclick = () => {
-    const summary=gameMode?`<p><strong>${activeScenario.title}</strong></p><div class="scenario-summary"><span>${items.length} upgrades</span><span>${money(costOf(items))} spent of ${money(budgetLimit)}</span><span>${result?`Challenge score ${result.score}/100`:'Design not tested'}</span></div>`:`<p><strong>Free simulation · all three campus intersections</strong></p><div class="scenario-summary"><span>${settings.demand} vehicles/hour per intersection</span><span>${WEATHER[settings.conditions.weather].label}</span><span>${settings.runs} rounds</span><span>${result?'Results ready':'Not run for these settings'}</span></div>`;
-    dialog('Your current scenario',summary+'<p>This session is held in memory. Leaving game mode restores your free simulation settings and results.</p>');
-};
-$("#editor-tab").onclick = () => {
-    $("#dialog").close();
-    if(gameMode){$("#exit-game").click();return;}
-    openPanel(null);
-    scene?.view(false);
-};
-=======
->>>>>>> ae886d41259957d0d60650b3129541fc11679b27
 scene?.setPlacementValidator(
     (type, zone, intersection) =>
         addUpgrade(items, type, zone, intersection, budgetLimit).error,
@@ -941,12 +922,8 @@ document.addEventListener("keydown", (event) => {
 
 const junctionJumps = document.createElement('div');
 // Keep navigation above the right-side panels on narrow screens.
-<<<<<<< HEAD
 $('#app').append($('.navigation-panel'),$('#event-chip'));
-=======
-$('#app').append($('.navigation-panel'));
 $('.navigation-panel').open=false;
->>>>>>> ae886d41259957d0d60650b3129541fc11679b27
 $('.navigation-panel').insertAdjacentHTML('beforeend','<p class="preview-accidents">Pedestrian accidents · preview: <strong id="pedestrian-accident-count">0</strong></p>');
 junctionJumps.className = 'intersection-jumps';
 junctionJumps.innerHTML = '<button id="previous-intersection" aria-label="Previous intersection" title="Previous intersection">←</button><span id="jump-intersection-name">Jump to intersection</span><button id="next-intersection" aria-label="Next intersection" title="Next intersection">→</button>';
@@ -1017,9 +994,7 @@ $("#collision-demo").onclick = () => {
 $('#cost-sources').onclick=()=>dialog('Oakland cost sources',`<p>${COST_DATA.note}</p><p><strong>Local benchmark:</strong> Terrace / DeSoto’s multi-block safety project was reported at about $110,000 in 2025. It is not a per-upgrade rate.</p><ul>${COST_DATA.sources.map(source=>`<li><a href="${source.url}" target="_blank" rel="noreferrer">${source.title}</a> · ${source.publisher}${source.costBand?' · '+source.costBand:''}</li>`).join('')}</ul><p>Tool prices are labeled planning allowances. Design, drainage, utilities, accessibility, procurement and inflation require a project-specific estimate.</p>`);
 
 function syncModeControls(){
-    $("#editor-tab").innerHTML=gameMode?"← Exit game":icon("Box")+" Explore";
-    $("#editor-tab").classList.toggle("game-exit",gameMode);
-    $("#editor-tab").setAttribute("aria-label",gameMode?"Exit game and return to main page":"Explore main page");
+    $("#exit-game").hidden=!gameMode;
     $('#run').textContent=gameMode?'Next: run & view impact →':'Run simulation';
     $('#quick-run').innerHTML=icon('Play')+(gameMode?' Test my design':' Run simulation');
     $('#quick-run').setAttribute('aria-label',gameMode?'Test my design now':'Run simulation settings');
@@ -1049,26 +1024,18 @@ function syncModeControls(){
     $('#results-run').textContent=gameMode?'Next challenge →':'Set up a simulation →';
     $('#results-panel .return-simulation').textContent=gameMode?'← Revise design':'← Simulation settings';
     $('.seed-tag').textContent=gameMode?'Seed 42 · paired trials':'Seed 42 · repeatable trials';
-<<<<<<< HEAD
-    scene?.setSettings(settings);updateDesign();renderConditions();refreshIcons();
-=======
     $('#play-mode').classList.toggle('active',gameMode);$('#play-mode').setAttribute('aria-pressed',String(gameMode));
     $('#model-mode').classList.toggle('active',!gameMode);$('#model-mode').setAttribute('aria-pressed',String(!gameMode));
-    scene?.setSettings(settings);updateDesign();renderConditions();
->>>>>>> ae886d41259957d0d60650b3129541fc11679b27
+    scene?.setSettings(settings);updateDesign();renderConditions();refreshIcons();
 }
 async function startChallenge(kind){
     if(running)return toast('Wait for the current run to finish.');
     if(tutorial?.active)tutorial.stop();
     setHazardTool(null);
     if(!gameMode)freeSession={items:structuredClone(items),settings:structuredClone(settings),budget:budgetLimit,result:structuredClone(result)};
-<<<<<<< HEAD
     gameSession?.abort();
     const session=gameSession=new AbortController();
-    activeScenario=makeScenario(Math.random,kind);gameMode=true;document.body.dataset.mode='game';
-=======
-    activeScenario=makeScenario();gameMode=true;document.body.dataset.mode='play';
->>>>>>> ae886d41259957d0d60650b3129541fc11679b27
+    activeScenario=makeScenario(Math.random,kind);gameMode=true;document.body.dataset.mode='play';
     settings=structuredClone(activeScenario.settings);settings.challenge={id:activeScenario.id,title:activeScenario.title};budgetLimit=activeScenario.budget;items=[];chooseTool(null);
     $('.scenario-banner').hidden=false;$('#scenario-title').textContent=activeScenario.title;
     $('#scenario-description').textContent=activeScenario.description;
@@ -1087,41 +1054,29 @@ async function startChallenge(kind){
     finally { if(gameSession===session){ running=false;$('#test-design').disabled=!gameBaseline;$('#run').disabled=!gameBaseline;$('#quick-run').disabled=!gameBaseline; } }
 
 }
-<<<<<<< HEAD
-$('#play-mode').onclick=startChallenge;$('#new-challenge').onclick=startChallenge;
-$('#new-challenge').insertAdjacentHTML('afterend','<button id="campus-challenge">Campus class change</button>');
-$('#campus-challenge').onclick=()=>startChallenge('campus');
-$('#exit-game').onclick=()=>{
-    if(!gameMode)return;
-    gameSession?.abort();gameSession=null;running=false;finishFastSimulation();
-=======
 function enterModel(){
-    if(running)return toast('Wait for the current run to finish.');
->>>>>>> ae886d41259957d0d60650b3129541fc11679b27
+    if(!gameMode){openPanel('simulation');return;}
+    gameSession?.abort();gameSession=null;running=false;finishFastSimulation();
     if(tutorial?.active)tutorial.stop();
     setHazardTool(null);
     gameMode=false;$('#run').disabled=false;$('#quick-run').disabled=false;document.body.dataset.mode='model';activeScenario=null;$('.scenario-banner').hidden=true;
     items=freeSession?.items||[];settings=freeSession?.settings||{...DEFAULT_SETTINGS,conditions:{...DEFAULT_CONDITIONS},budget:BUDGET};budgetLimit=1_000_000_000;settings.budget=budgetLimit;
     chooseTool(null);markDirty();syncModeControls();
     if(freeSession?.result){result=freeSession.result;$('#result-scope').value='network';displayResult(result);}
-<<<<<<< HEAD
-    openPanel(null);scene?.view(false);$('#play-mode').focus();
-};
-$('#free-design').hidden=true;$('#free-results').remove();
+    openPanel(null);scene?.view(false);$('#model-mode').focus();
+}
+$('#play-mode').onclick=()=>{if(!gameMode)startChallenge();};$('#new-challenge').onclick=startChallenge;
+$('#new-challenge').insertAdjacentHTML('afterend','<button id="campus-challenge">Campus class change</button>');
+$('#campus-challenge').onclick=()=>startChallenge('campus');
+$('#model-mode').onclick=()=>{enterModel();openPanel('simulation');};
+$('#exit-game').onclick=enterModel;
+$('#play-edit-design').onclick=()=>openPanel('design',{focus:true});
+$('#settings-button').onclick=()=>gameMode?dialog('Play settings','<p>Challenge conditions are locked. Choose New challenge for another scenario, or Model for free-form controls.</p>'):openPanel('simulation',{focus:true});
+$('#free-design').textContent='Edit infrastructure on map';$('#free-design').onclick=()=>openPanel('design',{focus:true});$('#free-results').remove();
 for(const button of document.querySelectorAll('.return-simulation')){button.textContent=button.closest('#design-panel')?'Next: Simulate →':gameMode?'← Revise design':'← Simulation settings';button.onclick=()=>openPanel(button.closest('#design-panel')?'simulation':gameMode?'design':'simulation',{focus:true});}
 $('#design-panel .return-simulation').classList.add('step-next');
 $('#run').classList.add('step-next');
 $('#results-run').classList.add('step-next');
-=======
-    else openPanel('simulation');
-}
-$('#play-mode').onclick=()=>{if(!gameMode)startChallenge();};$('#new-challenge').onclick=startChallenge;
-$('#model-mode').onclick=enterModel;
-$('#play-edit-design').onclick=()=>openPanel('design',{focus:true});
-$('#settings-button').onclick=()=>gameMode?dialog('Play settings','<p>Challenge traffic, weather, construction, goals, and budget are locked. Choose <strong>New challenge</strong> for another scenario, or switch to <strong>Model</strong> for free-form controls.</p>'):openPanel('simulation',{focus:true});
-$('#free-design').textContent='Edit infrastructure on map';$('#free-design').onclick=()=>openPanel('design',{focus:true});$('#free-results').remove();
-for(const button of document.querySelectorAll('.return-simulation'))button.onclick=()=>openPanel('simulation');
->>>>>>> ae886d41259957d0d60650b3129541fc11679b27
 function changeConditions(event){
     if(gameMode||running)return;
     const parse=id=>{const value=$('#'+id).value;if(!value)return null;const [intersection,zone]=value.split('/');return{intersection,zone};};

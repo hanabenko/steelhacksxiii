@@ -14,7 +14,7 @@ export function makeScenario(rng=Math.random,kind){
     {title:'Storm recovery',description:`${location}: road damage has closed the approach during a storm. Place Road repair ($8,000) on that approach to reopen it, then improve the remaining streets.`,weather:'storm',closure:{...hazard,repairable:true}},
     {title:'Damaged-road closure',description:`${location}: the approach is closed for damaged pavement. Place Road repair ($8,000) on the matching approach to reopen it and restore capacity.`,closure:{...hazard,repairable:true}},
     {title:'Pothole season',description:`${location}: a large pothole slows traffic. Repair it ($8,000) or isolate the approach with construction barriers ($4,000).`,pothole:hazard},
-    {title:'Campus class change',description:`Help students reach class: increase campus pedestrian throughput by 15% with raised crosswalks and curb extensions across the three intersections. ${location} also has a pothole to repair or isolate. Keep at least 95% of vehicle throughput.`,pothole:hazard,pedestrianGoal:15,pedestrianDemand:1800},
+    {title:'Campus class change',description:`Help students reach class: increase campus pedestrian throughput by 15% with raised crosswalks and curb extensions across the three intersections. ${location} also has a pothole to repair ($8,000) or isolate with barriers ($4,000). Keep at least 95% of vehicle throughput.`,pothole:hazard,pedestrianGoal:15,pedestrianDemand:1800},
   ];
   const chosen=variants[index],budget=index===4?100000:[60000,80000,100000][Math.floor(rng()*3)];
   return {id:chosen.title.toLowerCase().replaceAll(' ','-'),title:chosen.title,description:chosen.description,budget,pedestrianGoal:chosen.pedestrianGoal,

@@ -57,3 +57,11 @@ test('challenge score rewards fixing a road closure even when accident counts do
  assert.equal(comparison.result.hazards.addressed,1);assert.ok(comparison.score>=50);
  assert.equal(gameComparison(base,base,{conditions:config.conditions,items:[]}).score,0);
 });
+
+test('pedestrian goal completion contributes to the campus challenge score',()=>{
+ const config={...settings,pedestrianDemand:1800},base=evaluateGame([],config);
+ const items=base.result.intersections.map(site=>({type:'crosswalk',intersection:site.id,zone:'east'}));
+ const comparison=gameComparison(base,evaluateGame(items,config),{conditions:config.conditions,items,pedestrianGoal:15});
+ assert.equal(comparison.result.pedestrianObjective.achieved,true);assert.ok(comparison.score>=40);
+ assert.equal(gameComparison(base,base,{conditions:config.conditions,items:[],pedestrianGoal:15}).result.pedestrianObjective.achieved,false);
+});

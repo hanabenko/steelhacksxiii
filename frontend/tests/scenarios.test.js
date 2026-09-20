@@ -76,3 +76,16 @@ test('matching road repair clears visible scenario barriers and restores live tr
  for(let i=0;i<180;i++){fixed.update(1/60,{penn:'green',cross:'green'},[repair],null,[],conditions);normal.update(1/60,{penn:'green',cross:'green'},[],null,[],DEFAULT_CONDITIONS);}
  for(let i=0;i<2;i++){assert.equal(fixed.vehicles[i].s,normal.vehicles[i].s);assert.equal(fixed.vehicles[i].speed,normal.vehicles[i].speed);assert.equal(fixed.vehicles[i].route.id,normal.vehicles[i].route.id);}
 });
+
+test('campus class change has an achievable pedestrian-throughput objective with a paired baseline',()=>{
+ const scenario=makeScenario(()=>.1,'campus'),settings=scenario.settings;
+ assert.equal(scenario.pedestrianGoal,15);assert.equal(settings.pedestrianDemand,1800);assert.equal(scenario.budget,100000);
+ const base=simulateNetwork([],settings);assert.deepEqual(base.before.pedestrianThroughput,base.after.pedestrianThroughput);
+ const upgrades=base.intersections.map(s=>({type:'crosswalk',intersection:s.id,zone:'east'}));
+ const improved=simulateNetwork(upgrades,settings);
+ assert.ok(improved.after.pedestrianThroughput.mean/base.after.pedestrianThroughput.mean>=1.15);
+ assert.ok(improved.after.throughput.mean/base.after.throughput.mean>=.95);
+ assert.equal(improved.after.pedestrianThroughput.mean,improved.intersections.reduce((sum,s)=>sum+s.after.pedestrianThroughput.mean,0));
+ assert.deepEqual(simulateNetwork([{type:'bike',...hazard}],settings).after.pedestrianThroughput,base.after.pedestrianThroughput);
+ assert.throws(()=>simulateNetwork([],{...settings,pedestrianDemand:-1}),/pedestrian demand/);
+});

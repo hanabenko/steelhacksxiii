@@ -96,3 +96,4 @@ for(const width of [1440,390])test(`road repair challenge progresses through nex
  await page.getByRole('button',{name:'Next challenge →',exact:true}).click();await expect(page.locator('#design-panel')).toBeVisible();
  await expect(page.locator('#test-design')).toBeEnabled();await expect(page.locator('#budget')).toHaveText('$80,000');await expect(page.locator('#result-status')).toHaveText('DESIGN UPDATED');
 });
+
