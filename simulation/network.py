@@ -26,6 +26,10 @@ class IntersectionNetwork:
     latitude: float
     street_names: tuple[str, ...]
     radius_m: float = 500.0
+    target_junction_id: str | None = None
+    traffic_light_id: str | None = None
+    candidate_id: str | None = None
+    calibration_fallback_intersection_id: str | None = None
 
     @property
     def directory(self) -> Path:
@@ -58,7 +62,25 @@ NETWORKS = {
         longitude=-79.9592766237412,
         latitude=40.44116260191021,
         street_names=("Fifth Avenue", "Meyran Avenue"),
-    )
+        target_junction_id="cluster_104580895_8099223724",
+        candidate_id="signal_1977783821",
+    ),
+    # This checked-in extract is the same OSM campus extract used by the frontend.
+    # It intentionally remains a separate SUMO network, not a Three.js coordinate system.
+    "pitt-forbes-bigelow": IntersectionNetwork(
+        intersection_id="pitt-forbes-bigelow",
+        longitude=-79.9535474,
+        latitude=40.4431909,
+        street_names=("Forbes Avenue", "Bigelow Boulevard"),
+        radius_m=500.0,
+        target_junction_id="cluster_105013345_6715675240_6715675241_6715675242_#1more",
+        traffic_light_id="cluster_105013345_6715675240_6715675241_6715675242_#1more",
+        candidate_id="frontend-osm-node-105013345",
+        # No complete local traffic-count calibration has been imported for this
+        # frontend target yet. Reuse is explicit in run assumptions, never implied
+        # to be a Forbes/Bigelow observation.
+        calibration_fallback_intersection_id="fifth-meyran",
+    ),
 }
 
 
@@ -193,10 +215,15 @@ def target_network_plan(spec: IntersectionNetwork) -> IntersectionPlan:
         }
         if required_names.issubset(edge_names):
             named_nodes.append(node)
-    target = min(
-        named_nodes or nodes,
-        key=lambda node: math.dist(node.getCoord(), (target_x, target_y)),
+    target = next(
+        (node for node in nodes if node.getID() == spec.target_junction_id),
+        None,
     )
+    if target is None:
+        target = min(
+            named_nodes or nodes,
+            key=lambda node: math.dist(node.getCoord(), (target_x, target_y)),
+        )
     routes: list[tuple[str, ...]] = []
     traffic_light_ids: set[str] = set()
     for incoming in target.getIncoming():
@@ -253,7 +280,11 @@ def target_network_plan(spec: IntersectionNetwork) -> IntersectionPlan:
 
     return IntersectionPlan(
         target_node_id=target.getID(),
-        traffic_light_id=min(traffic_light_ids) if traffic_light_ids else None,
+        traffic_light_id=(
+            spec.traffic_light_id
+            if spec.traffic_light_id in traffic_light_ids
+            else min(traffic_light_ids) if traffic_light_ids else None
+        ),
         vehicle_routes=tuple(sorted(set(routes))),
         pedestrian_routes=tuple(
             sorted({route for _, route in routes_by_crossing.values()})

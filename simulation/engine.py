@@ -12,6 +12,7 @@ import traci
 from scripts.tiger import connection
 from simulation.database import (
     create_run,
+    ensure_intersection_record,
     load_calibration,
     mark_failed,
     persist_results,
@@ -26,11 +27,13 @@ from simulation.models import (
     VehicleState,
 )
 from simulation.network import ensure_network, sumo_binary, target_network_plan
+from simulation.replay import pedestrian_agent, safety_event_agent, write_pedestrian_replay
 from simulation.safety import SafetyConfig, detect_ttc_events, minimum_ttc_events
 from simulation.signals import apply_signal_interventions
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
 OUTPUT_ROOT = REPO_ROOT / "simulation" / "output"
+RUN_REPLAY_ROOT = REPO_ROOT / "simulation" / "cache" / "runs"
 
 
 def run_scenario(
@@ -43,6 +46,7 @@ def run_scenario(
     rebuild_network: bool = False,
     keep_output: bool = False,
     pedestrian_config: PedestrianDemandConfig | None = None,
+    capture_replay: bool = False,
 ) -> SimulationResult:
     """Run and persist one scenario; suitable for CLI, Monte Carlo, or API wrapping."""
     if duration_s < 1:
@@ -58,7 +62,12 @@ def run_scenario(
     started_at = datetime.now(UTC).replace(microsecond=0)
 
     with connection(database_url) as conn:
-        calibration = load_calibration(conn, scenario.intersection_id)
+        ensure_intersection_record(conn, spec)
+        calibration = load_calibration(
+            conn,
+            scenario.intersection_id,
+            fallback_intersection_id=spec.calibration_fallback_intersection_id,
+        )
         demand = write_routes(
             route_path,
             [list(route) for route in network_plan.vehicle_routes],
@@ -79,6 +88,9 @@ def run_scenario(
             "crossing_route_count": len(network_plan.vehicle_routes),
             "pedestrian_crossing_route_count": len(network_plan.pedestrian_routes),
             "calibration": calibration.to_dict(),
+            "calibration_intersection_id": (
+                spec.calibration_fallback_intersection_id or scenario.intersection_id
+            ),
             "demand": demand.to_dict(),
             "safety": safety_config.to_dict(),
             "pedestrian_demand_assumption": pedestrian_config.to_dict(),
@@ -91,6 +103,8 @@ def run_scenario(
         all_speeds: list[float] = []
         latest_vehicle_delays: dict[str, float] = {}
         latest_pedestrian_waits: dict[str, float] = {}
+        pedestrian_replay_states: list[dict[str, object]] = []
+        signal_replay_states: list[dict[str, object]] = []
         vehicles_completed = 0
         pedestrians_completed = 0
         command = [
@@ -161,6 +175,23 @@ def run_scenario(
                             road_id=traci.person.getRoadID(pedestrian_id),
                         )
                     )
+                if capture_replay:
+                    pedestrian_replay_states.extend(
+                        pedestrian_agent(state) for state in step_pedestrians
+                    )
+                    if network_plan.traffic_light_id:
+                        signal_replay_states.append(
+                            {
+                                "t": simulation_time,
+                                "signal_id": network_plan.traffic_light_id,
+                                "program_id": traci.trafficlight.getProgram(
+                                    network_plan.traffic_light_id
+                                ),
+                                "state": traci.trafficlight.getRedYellowGreenState(
+                                    network_plan.traffic_light_id
+                                ),
+                            }
+                        )
                 step_speeds = [state.speed_mps for state in step_states]
                 all_speeds.extend(step_speeds)
                 states.extend(step_states)
@@ -208,6 +239,19 @@ def run_scenario(
                 pedestrian_waits_s=list(latest_pedestrian_waits.values()),
                 vehicle_pedestrian_events=vehicle_pedestrian_events,
             )
+            replay_artifact = None
+            if capture_replay:
+                replay_events = []
+                for event in vehicle_safety_events + vehicle_pedestrian_events:
+                    longitude, latitude = traci.simulation.convertGeo(event.x, event.y)
+                    replay_events.append(safety_event_agent(event, longitude, latitude))
+                replay_artifact = write_pedestrian_replay(
+                    RUN_REPLAY_ROOT / f"{run_id}.json.gz",
+                    duration_s,
+                    pedestrian_replay_states,
+                    signal_states=signal_replay_states,
+                    safety_events=replay_events,
+                )
             persist_results(
                 conn=conn,
                 run_id=run_id,
@@ -234,4 +278,5 @@ def run_scenario(
         scenario_name=scenario.name,
         seed=seed,
         metrics=metrics,
+        replay_artifact=str(replay_artifact) if replay_artifact else None,
     )

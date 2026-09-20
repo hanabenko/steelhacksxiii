@@ -3,36 +3,26 @@
 from __future__ import annotations
 
 import os
-from collections.abc import Mapping, Sequence
+from collections.abc import Sequence
 from typing import Any
 
+from simulation.baseline import get_baseline_state, get_scenario_state
 from simulation.compare import compare_scenarios
 from simulation.demand import PedestrianDemandConfig
 from simulation.interventions import (
-    Intervention,
+    InterventionInput,
     Scenario,
-    SignalTimingChange,
-    SpeedLimitChange,
+    intervention_from_config,
 )
 from simulation.monte_carlo import ScenarioRunner, run_monte_carlo
 from simulation.safety import SafetyConfig
 
-InterventionInput = Intervention | Mapping[str, Any]
-
-
-def intervention_from_config(config: InterventionInput) -> Intervention:
-    if isinstance(config, (SpeedLimitChange, SignalTimingChange)):
-        return config
-    intervention_type = config.get("type", config.get("intervention_type"))
-    if intervention_type == "speed_limit":
-        return SpeedLimitChange(float(config["speed_limit_mph"]))
-    if intervention_type == "signal_timing":
-        return SignalTimingChange(
-            main_green_s=float(config["main_green_s"]),
-            side_green_s=float(config["side_green_s"]),
-        )
-    raise ValueError(f"Unsupported intervention type: {intervention_type!r}")
-
+__all__ = [
+    "compare_scenario_configs",
+    "get_baseline_state",
+    "get_scenario_state",
+    "simulate_scenario",
+]
 
 def simulate_scenario(
     intersection_id: str = "fifth-meyran",
@@ -44,12 +34,14 @@ def simulate_scenario(
     database_url: str | None = None,
     ttc_thresholds_s: tuple[float, ...] = (1.5, 3.0),
     pedestrians_per_hour: float = 60.0,
+    vehicle_demand_vehicles_per_hour: float | None = None,
     runner: ScenarioRunner | None = None,
 ) -> dict[str, Any]:
     """Run a game scenario without exposing SUMO, TraCI, or Tiger implementation details."""
     scenario = Scenario(
         intersection_id=intersection_id,
         interventions=tuple(intervention_from_config(item) for item in interventions),
+        vehicle_demand_vehicles_per_hour=vehicle_demand_vehicles_per_hour,
     )
     kwargs: dict[str, Any] = {}
     if runner is not None:

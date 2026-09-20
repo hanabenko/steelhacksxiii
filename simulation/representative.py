@@ -6,7 +6,6 @@ import math
 import statistics
 from typing import Any
 
-
 CORE_FIELDS = (
     "mean_speed_mps",
     "median_speed_mps",

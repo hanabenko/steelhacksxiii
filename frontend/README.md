@@ -65,7 +65,7 @@ The Cathedral uses its OSM building-part polygons and heights up to 163 m; its e
 
 Missing heights, facade windows, storefront decoration, awnings, roofs, road widths, signal hardware, costs and behavior remain illustrative. This is an OSM-based stylized model, not photogrammetry or a surveyed as-built model. All three editable intersections use OSM junction-node coordinates. Upgrade geometry stays attached to its intersection, and tree clearance includes all three sets of signal locations. The local comparison aggregates independent intersection responses under shared demand samples; it does not simulate coupled routing or queue spillback.
 
-**No measured crash counts or traffic counts are loaded. No SUMO backend is included.** The default combined engine is `local-network-surrogate-v1` (per-site estimates use `local-surrogate-v1`), a transparent uncalibrated frontend model. It is not a crash predictor or evidence of a real infrastructure treatment effect.
+**No measured crash counts or traffic counts are loaded by the frontend itself.** The default combined results engine remains `local-network-surrogate-v1` (per-site estimates use `local-surrogate-v1`), a transparent uncalibrated frontend model. It is not a crash predictor or evidence of a real infrastructure treatment effect. When a simulation endpoint is configured, the scene's traffic animation is separate from those results and loads the actual Forbes × Bigelow SUMO baseline replay.
 
 ### Local Monte Carlo model
 
@@ -74,11 +74,11 @@ Missing heights, facade windows, storefront decoration, awnings, roofs, road wid
 - Conflict proxy is a synthetic index per 1,000 vehicles, **not a measured TTC-event rate or predicted crash count**.
 - Pedestrian access and street score are game indices, not official planning measures.
 - `ci` is the 95% normal-approximation half-width for the sampled mean, excluding structural/model uncertainty. It is not a real-world confidence bound.
-- Visual traffic is separate from the Monte Carlo model. Its TTC overlay uses `(following separation - vehicle length) / closing speed` for same-lane actors, marking positive TTC below 1.5 s. It is an illustrative following conflict, not a validated collision detector. Pedestrians are decorative walking actors; turning movements and vehicle–pedestrian interaction physics are future backend work.
+- Without a simulation endpoint, the scene does not invent moving traffic. With `VITE_SIMULATION_BASELINE_URL` (or the fallback `VITE_SIMULATION_API_URL`) configured, vehicles, pedestrians, signal states, and TTC markers come from the simulation-owned representative replay contract. The frontend only interpolates and projects those states into the map; it does not calculate safety metrics.
 
 ## Connect Python / SUMO
 
-Copy `.env.example` to `.env.local`, set `VITE_SIMULATION_API_URL=http://127.0.0.1:8000/simulate`, and restart Vite. Enable CORS for the frontend origin in your Python service. `VITE_*` values are public browser configuration; do not place secrets there.
+Copy `.env.example` to `.env.local`, set `VITE_SIMULATION_BASELINE_URL` to the simulation contract endpoint, and restart Vite. Enable CORS for the frontend origin in your Python service. `VITE_*` values are public browser configuration; do not place secrets there. The baseline replay request targets only `pitt-forbes-bigelow`, uses the cached/default simulation demand when no demand override is supplied, and expects contract version 1 with `baseline.representative_replay`.
 
 `src/simulation.js` sends:
 

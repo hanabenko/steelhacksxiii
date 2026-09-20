@@ -147,6 +147,7 @@ class SimulationResult:
     scenario_name: str
     seed: int
     metrics: RunMetrics
+    replay_artifact: str | None = None
 
     def to_dict(self) -> dict[str, Any]:
         return {

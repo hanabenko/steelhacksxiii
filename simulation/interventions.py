@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from collections.abc import Mapping
 from dataclasses import dataclass, field
 from typing import Any
 
@@ -45,6 +46,22 @@ class SignalTimingChange:
 
 
 Intervention = SpeedLimitChange | SignalTimingChange
+InterventionInput = Intervention | Mapping[str, Any]
+
+
+def intervention_from_config(config: InterventionInput) -> Intervention:
+    """Normalize a game-friendly dictionary or an intervention object."""
+    if isinstance(config, (SpeedLimitChange, SignalTimingChange)):
+        return config
+    intervention_type = config.get("type", config.get("intervention_type"))
+    if intervention_type == "speed_limit":
+        return SpeedLimitChange(float(config["speed_limit_mph"]))
+    if intervention_type == "signal_timing":
+        return SignalTimingChange(
+            main_green_s=float(config["main_green_s"]),
+            side_green_s=float(config["side_green_s"]),
+        )
+    raise ValueError(f"Unsupported intervention type: {intervention_type!r}")
 
 
 @dataclass(frozen=True)
@@ -52,9 +69,15 @@ class Scenario:
     intersection_id: str
     interventions: tuple[Intervention, ...] | list[Intervention] = ()
     scenario_name: str | None = None
+    vehicle_demand_vehicles_per_hour: float | None = None
 
     def __post_init__(self) -> None:
         object.__setattr__(self, "interventions", tuple(self.interventions))
+        if (
+            self.vehicle_demand_vehicles_per_hour is not None
+            and self.vehicle_demand_vehicles_per_hour <= 0
+        ):
+            raise ValueError("Vehicle demand must be positive when supplied")
         speed_changes = [
             item for item in self.interventions if isinstance(item, SpeedLimitChange)
         ]
@@ -95,4 +118,5 @@ class Scenario:
             "intersection_id": self.intersection_id,
             "scenario_name": self.name,
             "interventions": [item.to_dict() for item in self.interventions],
+            "vehicle_demand_vehicles_per_hour": self.vehicle_demand_vehicles_per_hour,
         }

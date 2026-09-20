@@ -121,12 +121,26 @@ def aggregate_run_metrics(
         ]
         threshold_summary[key] = {
             "event_count": distribution(counts),
+            "events_per_1000_completed_vehicles": distribution(
+                [
+                    1000 * count / run.vehicles_completed
+                    for count, run in zip(counts, runs, strict=True)
+                    if run.vehicles_completed > 0
+                ]
+            ),
             "proportion_of_runs_with_event": (
                 sum(count > 0 for count in counts) / len(counts) if counts else 0.0
             ),
         }
         pedestrian_threshold_summary[key] = {
             "event_count": distribution(pedestrian_counts),
+            "events_per_1000_completed_vehicles": distribution(
+                [
+                    1000 * count / run.vehicles_completed
+                    for count, run in zip(pedestrian_counts, runs, strict=True)
+                    if run.vehicles_completed > 0
+                ]
+            ),
             "proportion_of_runs_with_event": (
                 sum(count > 0 for count in pedestrian_counts) / len(pedestrian_counts)
                 if pedestrian_counts

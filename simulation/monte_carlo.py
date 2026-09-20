@@ -51,6 +51,7 @@ def run_monte_carlo(
     progress: ProgressCallback | None = None,
     runner: ScenarioRunner = run_scenario,
     pedestrian_config: PedestrianDemandConfig | None = None,
+    capture_replays: bool = False,
 ) -> dict[str, Any]:
     safety_config = safety_config or SafetyConfig()
     run_seeds = list(seeds) if seeds is not None else derive_run_seeds(base_seed, runs)
@@ -58,26 +59,37 @@ def run_monte_carlo(
         raise ValueError("The number of supplied seeds must equal runs")
     results = []
     for index, seed in enumerate(run_seeds, start=1):
-        result = runner(
-            scenario=scenario,
-            seed=seed,
-            database_url=database_url,
-            duration_s=duration_s,
-            safety_config=safety_config,
-            pedestrian_config=pedestrian_config,
-        )
+        runner_kwargs = {
+            "scenario": scenario,
+            "seed": seed,
+            "database_url": database_url,
+            "duration_s": duration_s,
+            "safety_config": safety_config,
+            "pedestrian_config": pedestrian_config,
+        }
+        if capture_replays:
+            runner_kwargs["capture_replay"] = True
+        result = runner(**runner_kwargs)
         results.append(result)
         if progress:
             progress(index, runs, seed, result)
-    return {
+    summary = {
         "scenario": scenario.to_dict(),
         "base_seed": base_seed,
         "seeds": run_seeds,
         "run_ids": [str(result.run_id) for result in results],
+        "runs": [result.to_dict() for result in results],
         "aggregate": aggregate_run_metrics(
             [result.metrics for result in results], safety_config.ttc_thresholds_s
         ),
     }
+    if capture_replays:
+        summary["replay_artifacts"] = {
+            str(result.run_id): result.replay_artifact
+            for result in results
+            if result.replay_artifact is not None
+        }
+    return summary
 
 
 def parse_thresholds(value: str) -> tuple[float, ...]:

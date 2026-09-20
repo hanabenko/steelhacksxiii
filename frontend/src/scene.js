@@ -12,7 +12,6 @@ import map from './data/intersection.json' with { type: 'json' };
 import { centerOf, clearOfSignals, clipSegment, roadPoint } from './campus-geometry.js';
 import { random } from './model.js';
 import { createArchitecture } from './architecture.js';
-import { signalState } from './signals.js';
 import { APPROACHES, placementFor, createUpgrade, colorPreview, disposeUpgrade } from './infrastructure.js';
 
 export function createIntersection(container, onPlace, onEvent) {
@@ -125,10 +124,11 @@ export function createIntersection(container, onPlace, onEvent) {
   function focusLandmark(id){navigation.setMode('pan');const landmark=landmarks.find(l=>l.id===id);if(!landmark)return;const [x,z]=landmark.point;controls.target.set(x,landmark.height*.4,z);camera.position.set(x+160,landmark.height*.4+190,z+200);camera.zoom=id==='cathedral'?.7:1.3;camera.updateProjectionMatrix();controls.update();}
   let hovered=null,validatePlacement=()=>null,lastSignal='';
   const placementRay=new THREE.Raycaster();
-  function refreshPreviews(){for(const group of previews.children)colorPreview(group,{hovered:group.userData.intersection+":"+group.userData.zone===hovered,invalid:!!validatePlacement(selected,group.userData.zone,group.userData.intersection)});for(const [name,label] of zoneLabels){const error=hovered===name?validatePlacement(selected,name.split(':')[1],name.split(':')[0]):null;label.classList.toggle('invalid',!!error);label.textContent=error||intersectionById(name.split(':')[0]).name+' · '+name.split(':')[1]+' · build here';}}
-  const cars=[];const traffic=createTraffic(roadFeatures,42,map.points);let designItems=[];
-  for(let i=0;i<42;i++){
-    const g=new THREE.Group(),color=['#f3ca49','#3f79d3','#ea665b','#59b5b5','#f6f0e2','#596acd'][i%6];
+  function refreshPreviews(){for(const group of previews.children)colorPreview(group,{hovered:group.userData.zone===hovered,invalid:!!validatePlacement(selected,group.userData.zone)});}
+  const replayVehicleColors=['#f3ca49','#3f79d3','#ea665b','#59b5b5','#f6f0e2','#596acd'];
+  const replayColor=id=>replayVehicleColors[[...String(id)].reduce((sum,char)=>sum+char.charCodeAt(0),0)%replayVehicleColors.length];
+  function createVehicleActor(id){
+    const g=new THREE.Group(),color=replayColor(id);
     box(2,1.1,4.1,0,.8,0,color,g);box(1.75,.85,2.1,0,1.65,-.2,color,g);box(1.58,.55,.05,0,1.68,-1.27,'#495f60',g);box(1.58,.55,.05,0,1.68,.88,'#495f60',g);
     for(const x of [-1,1])for(const z of [-1.3,1.3]){
       const tire=new THREE.Mesh(new THREE.CylinderGeometry(.39,.39,.25,12),mat('#283545'));tire.rotation.z=Math.PI/2;tire.position.set(x,.53,z);tire.castShadow=true;g.add(tire);
@@ -145,23 +145,46 @@ export function createIntersection(container, onPlace, onEvent) {
     box(1.6,.16,.08,0,.55,-2.1,'#b2c0ce',g);
     const brakeLights=[];for(const x of [-.68,.68]){const lamp=box(.43,.24,.07,x,.96,-2.09,'#e94e4c',g);lamp.material=lamp.material.clone();brakeLights.push(lamp);}
     box(.4,.15,.05,-.65,.9,2.08,'#fff3c1',g);box(.4,.15,.05,.65,.9,2.08,'#fff3c1',g);
-    const avMarker=box(.9,.12,.9,0,2.15,-.2,'#7bbdc0',g);avMarker.visible=false;
-    const hazardLights=[];for(const x of [-.85,.85])for(const z of [-2.13,2.13]){const lamp=box(.22,.22,.06,x,1,z,'#ffb82e',g);lamp.material=lamp.material.clone();lamp.material.emissive.setHex(0xff9400);lamp.material.emissiveIntensity=2;lamp.visible=false;hazardLights.push(lamp);}
-    const vehicle=traffic.vehicles[i];let model={g,avMarker,brakeLights,hazardLights,wheels:[]};
-    if(vehicle.kind!=='car'){for(const lamp of [...brakeLights,...hazardLights])lamp.material.dispose();for(const child of [...g.children]){child.geometry?.dispose();g.remove(child);}model={g,...buildVehicleVariant(vehicle.kind,g,{box,mat,textures:labelTextures})};}
-    g.rotation.y=vehicle.pose.angle;scene.add(g);cars.push(model);
+    scene.add(g);g.visible=false;return {id,type:'vehicle',g};
   }
-  renderer.domElement.dataset.vehicleTypes=[...new Set(traffic.vehicles.map(v=>v.kind))].join(',');
-  const collision=createCollisionPreview(scene,cars.filter((_,i)=>traffic.vehicles[i].kind==='car').map(car=>car.g));
-  const pedestrians=[];
-  for(let i=0;i<16;i++){
-    const g=new THREE.Group();box(.5,1,.4,0,.95,0,['#ce8653','#4d7770','#e5d7b3','#899aad'][i%4],g);
+  function createPedestrianActor(id){
+    const g=new THREE.Group();box(.5,1,.4,0,.95,0,['#ce8653','#4d7770','#e5d7b3','#899aad'][[...String(id)].reduce((sum,char)=>sum+char.charCodeAt(0),0)%4],g);
     const head=new THREE.Mesh(new THREE.SphereGeometry(.25,8,6),mat('#bca285'));head.position.y=1.75;g.add(head);
     const legs=[box(.16,.65,.2,-.14,.3,0,'#435249',g),box(.16,.65,.2,.14,.3,0,'#435249',g)];
-    scene.add(g);pedestrians.push({g,legs,p:-55+i*7,side:i%2?9:-9});
+    scene.add(g);g.visible=false;return {id,type:'pedestrian',g,legs};
   }
+  const cars=new Map(),pedestrians=new Map();
+  const removeReplayActor=actor=>{actor.g.traverse(object=>object.geometry?.dispose());scene.remove(actor.g);};
   const halo=new THREE.Mesh(new THREE.RingGeometry(2.6,3.1,48),new THREE.MeshBasicMaterial({color:0xe6a34a,transparent:true,opacity:.8,side:THREE.DoubleSide}));halo.rotation.x=-Math.PI/2;halo.visible=false;scene.add(halo);
-  let paused=matchMedia('(prefers-reduced-motion: reduce)').matches,speed=1,elapsed=0,previous=performance.now(),lastEvent=-99,eventTime=-99,selected=null,settings={green:35,av:0,demand:800},eventsVisible=true,frameId;
+  let paused=matchMedia('(prefers-reduced-motion: reduce)').matches,speed=1,elapsed=0,previous=performance.now(),lastEvent=-99,eventTime=-99,selected=null,settings={green:35,av:0,demand:800},eventsVisible=true,frameId,replay=null,replayTime=0,lastReplayEvent=null;
+  const replayPoint=(longitude,latitude)=>{
+    const east=(longitude-map.center.lon)*111320*Math.cos(map.center.lat*Math.PI/180);
+    const north=-(latitude-map.center.lat)*111320;
+    return [east*Math.cos(map.rotation)+north*Math.sin(map.rotation),-east*Math.sin(map.rotation)+north*Math.cos(map.rotation)];
+  };
+  const interpolate=(a,b,ratio)=>a===undefined?b:b===undefined?a:(typeof a==='number'&&typeof b==='number'?a+(b-a)*ratio:a);
+  function signalFromState(state,offset,length){const part=state.slice(offset,offset+length);return part.includes('G')?'green':part.includes('y')?'amber':'red';}
+  function applyReplaySignals(time){
+    const timeline=replay?.signal_states||[];if(!timeline.length)return;
+    let entry=timeline[0];for(const candidate of timeline){if(candidate.t>time)break;entry=candidate;}
+    const state=entry.state||'';const penn=signalFromState(state,0,3),cross=signalFromState(state,8,7);const signalKey=`${penn}/${cross}/${entry.t}`;
+    if(signalKey!==lastSignal){lastSignal=signalKey;onEvent({type:'signals',penn,cross,remaining:Math.max(0,Math.ceil(entry.t-time)),paused});}
+    signalLamps.forEach(({lamp,axis,index})=>{const value=axis==='x'?penn:cross;const lit=index===({red:0,amber:1,green:2}[value]);const c=lit?[0xff493e,0xffbf35,0x45ed99][index]:0x172231;lamp.material.color.setHex(c);lamp.material.emissive.setHex(lit?c:0);lamp.scale.setScalar(lit?1.12:1);});
+  }
+  function replayFramesAt(time){
+    const frames=replay?.frames||[];if(!frames.length)return;
+    let nextIndex=frames.findIndex(frame=>frame.t>=time);if(nextIndex<0)nextIndex=frames.length-1;
+    const next=frames[nextIndex],previousFrame=frames[Math.max(0,nextIndex-1)];const span=Math.max(.001,next.t-previousFrame.t),ratio=Math.max(0,Math.min(1,(time-previousFrame.t)/span));
+    const currentById=new Map(previousFrame.agents.map(agent=>[agent.id,agent])),nextById=new Map(next.agents.map(agent=>[agent.id,agent]));
+    const ids=new Set([...currentById.keys(),...nextById.keys()]);
+    for(const id of ids){const current=currentById.get(id),following=nextById.get(id),agent=current||following;const actors=agent.type==='pedestrian'?pedestrians:cars;let actor=actors.get(id);if(!actor){actor=agent.type==='pedestrian'?createPedestrianActor(id):createVehicleActor(id);actors.set(id,actor);}if(!current||!following){actor.g.visible=Boolean(agent);if(!agent)continue;}else actor.g.visible=true;
+      const longitude=interpolate(current?.longitude,following?.longitude,ratio),latitude=interpolate(current?.latitude,following?.latitude,ratio);if(longitude==null||latitude==null)continue;const [x,z]=replayPoint(longitude,latitude);actor.g.position.set(x,agent.type==='pedestrian'?.28:.25,z);const heading=interpolate(current?.heading,following?.heading,ratio);if(Number.isFinite(heading))actor.g.rotation.y=heading*Math.PI/180;if(agent.type==='pedestrian')actor.legs.forEach((leg,index)=>{leg.rotation.x=Math.sin(time*7+index*Math.PI)*.3;});
+    }
+    for(const [id,actor] of cars)if(!ids.has(id)){removeReplayActor(actor);cars.delete(id);}for(const [id,actor] of pedestrians)if(!ids.has(id)){removeReplayActor(actor);pedestrians.delete(id);}
+    applyReplaySignals(time);
+    const event=(replay.safety_events||[]).find(candidate=>Math.abs(candidate.t-time)<=.55);if(event&&event!==lastReplayEvent){lastReplayEvent=event;const [x,z]=replayPoint(event.longitude,event.latitude);halo.position.set(x,.5,z);if(eventsVisible)onEvent({type:'near-miss',ttc:Number(event.ttc_s).toFixed(1)});}halo.visible=eventsVisible&&event!=null;
+  }
+  function setReplay(payload){replay=payload;replayTime=0;lastReplayEvent=null;cars.forEach(removeReplayActor);pedestrians.forEach(removeReplayActor);cars.clear();pedestrians.clear();replayFramesAt(0);}
   function pick(clientX,clientY){
     if(!selected)return null;
     const rect=renderer.domElement.getBoundingClientRect();
@@ -183,34 +206,8 @@ export function createIntersection(container, onPlace, onEvent) {
   container.addEventListener('dragleave',()=>{hovered=null;refreshPreviews();});
   container.addEventListener('drop',e=>{e.preventDefault();hovered=null;refreshPreviews();const type=e.dataTransfer.getData('application/interlock');const zone=pick(e.clientX,e.clientY);if(type&&zone)onPlace(type,zone.split(":")[1],zone.split(":")[0]);else onEvent({type:'hint',message:'Drop directly onto a blue upgrade silhouette. Nothing was charged.'});});
   function animate(now){frameId=requestAnimationFrame(animate);const realDt=Math.min((now-previous)/1000,.08);navigation.update(realDt);const dt=realDt*(paused?0:speed);previous=now;elapsed+=dt;
-    const signals=signalState(elapsed,settings.green),xGreen=signals.penn==='green',zGreen=signals.cross==='green';
-    const look=new THREE.Vector3();camera.getWorldDirection(look);const viewPoint=navigation.mode==='street'?camera.position.clone().addScaledVector(look,35):controls.target;const viewedSite=nearestIntersection(viewPoint.x,viewPoint.z,INTERSECTIONS);renderer.domElement.dataset.viewedIntersection=viewedSite.id;
-    const signalKey=`${viewedSite.id}/${signals.penn}/${signals.cross}/${signals.remaining}/${paused}`;
-    if(signalKey!==lastSignal){lastSignal=signalKey;onEvent({type:'signals',...signals,paused,site:viewedSite});}
-    signalLamps.forEach(({lamp,axis,index})=>{const state=axis==='x'?signals.penn:signals.cross;const lit=index===({red:0,amber:1,green:2}[state]);const c=lit?[0xff493e,0xffbf35,0x45ed99][index]:0x172231;lamp.material.color.setHex(c);lamp.material.emissive.setHex(lit?c:0);lamp.scale.setScalar(lit?1.12:1);});
-    renderer.domElement.dataset.incident=collision.update(dt,eventsVisible);
-    const incident=collision.incident;
-    traffic.update(dt,signals,designItems,incident);
-    cars.forEach((car,i)=>{const vehicle=traffic.vehicles[i];car.g.visible=vehicle.enabled;car.g.position.set(vehicle.pose.x,.25,vehicle.pose.z);
-      const delta=Math.atan2(Math.sin(vehicle.pose.angle-car.g.rotation.y),Math.cos(vehicle.pose.angle-car.g.rotation.y));car.g.rotation.y+=delta*Math.min(1,dt*9);
-      car.wheels.forEach(wheel=>wheel.rotateY(vehicle.speed*dt/.45));
-      car.hazardLights.forEach(lamp=>lamp.visible=vehicle.reacting&&Math.floor(elapsed*3)%2===0);
-      car.brakeLights.forEach(lamp=>{lamp.material.emissive.setHex((vehicle.braking||vehicle.reacting&&vehicle.speed<.5)?0xff1608:0x000000);lamp.material.emissiveIntensity=(vehicle.braking||vehicle.reacting&&vehicle.speed<.5)?2:0;});
-
-    });
-    pedestrians.forEach((p,i)=>{
-      const before=roadPoint(roadFeatures,'Forbes Avenue','x',p.p,p.side);if(!before)return;
-      updatePedestrianReaction(p,i,dt,before,incident);if(p.p>75)p.p=-75;
-      const route=roadPoint(roadFeatures,'Forbes Avenue','x',p.p,p.side);if(route)p.g.position.set(route.x,.28,route.z);
-      const target=p.lookAngle??Math.PI/2,delta=Math.atan2(Math.sin(target-p.g.rotation.y),Math.cos(target-p.g.rotation.y));p.g.rotation.y+=delta*(1-Math.exp(-dt*5));
-      p.legs.forEach((leg,j)=>{const target=Math.sin((p.walkPhase||0)+j*Math.PI)*Math.min(.35,Math.abs(p.velocity||0)*.35);leg.rotation.x+=(target-leg.rotation.x)*(1-Math.exp(-dt*12));});
-    });
-    renderer.domElement.dataset.reactingCars=traffic.vehicles.filter(v=>v.enabled&&v.reacting).length;
-    renderer.domElement.dataset.reactingPedestrians=pedestrians.filter(p=>p.reacting).length;
-
-    // Following-gap marker belongs only to the animated preview.
-    if(elapsed-lastEvent>8){for(const a of traffic.vehicles){if(!a.enabled||a.speed<1)continue;const b=traffic.vehicles.find(b=>b!==a&&b.enabled&&b.route===a.route&&b.s>a.s&&b.s-a.s<15&&a.speed>b.speed+1);if(b){const ttc=(b.s-a.s-4.5)/(a.speed-b.speed);if(ttc>0&&ttc<1.5){lastEvent=elapsed;eventTime=elapsed;halo.position.set(a.pose.x,.5,a.pose.z);if(eventsVisible)onEvent({type:'near-miss',ttc:ttc.toFixed(1)});break;}}}}
-    halo.visible=eventsVisible&&elapsed-eventTime<2;halo.scale.setScalar(1+Math.sin(elapsed*7)*.08);
+    if(replay){replayTime+=dt;if(replayTime>replay.duration_s)replayTime=0;replayFramesAt(replayTime);}
+    halo.scale.setScalar(1+Math.sin(elapsed*7)*.08);
     controls.update();
     for(const [name,label] of zoneLabels){label.hidden=!selected||hovered!==name;if(selected){const {x,z}=placementFor(selected,name.split(":")[1],name.split(":")[0]);const p=new THREE.Vector3(x,selected==='signal'?8:1,z).project(camera);label.dataset.screenX=((p.x+1)*container.clientWidth/2).toFixed(2);label.dataset.screenY=((1-p.y)*container.clientHeight/2).toFixed(2);label.style.left=((p.x+1)*container.clientWidth/2)+'px';label.style.top=((1-p.y)*container.clientHeight/2)+'px';}}
     for(const landmark of landmarks){const p=new THREE.Vector3(landmark.point[0],landmark.height+5,landmark.point[1]).project(camera);landmark.label.hidden=!buildings.visible||Math.abs(p.x)>1||Math.abs(p.y)>1||p.z>1;landmark.label.style.left=((p.x+1)*container.clientWidth/2)+'px';landmark.label.style.top=((1-p.y)*container.clientHeight/2)+'px';}
@@ -231,11 +228,11 @@ export function createIntersection(container, onPlace, onEvent) {
     setPlacementValidator(fn){validatePlacement=fn;},
     setTool(type){selected=type;hovered=null;clear(previews);if(type){for(const site of INTERSECTIONS)for(const zone of APPROACHES)previews.add(createUpgrade(type,zone,{preview:true,intersection:site.id}));refreshPreviews();}renderer.domElement.style.cursor=type?'crosshair':'grab';},
     setUpgrades(items){
-      designItems=items;signalLamps.splice(permanentSignalCount);clear(upgrades);
+      signalLamps.splice(permanentSignalCount);clear(upgrades);
       for(const item of items){const group=createUpgrade(item.type,item.zone,{intersection:item.intersection||DEFAULT_INTERSECTION});upgrades.add(group);if(item.type==='signal')group.traverse(lamp=>{if(lamp.userData.signalIndex!==undefined)signalLamps.push({lamp,axis:placementFor(item.type,item.zone,item.intersection||DEFAULT_INTERSECTION).axis,index:lamp.userData.signalIndex});});}
       refreshPreviews();
     },
-    setPaused(value){paused=value;},setSpeed(value){speed=value;},setSettings(value){settings={...value};cars.forEach((car,i)=>{traffic.vehicles[i].enabled=(i%14)<Math.max(3,Math.ceil(value.demand/1600*14));car.g.visible=traffic.vehicles[i].enabled;car.avMarker.visible=traffic.vehicles[i].kind!=='bike'&&(i*7%100)<value.av;});},
+    setPaused(value){paused=value;},setSpeed(value){speed=value;},setSettings(value){settings={...value};},setReplay,
     toggleLayer(name,value){if(name==='buildings')buildings.visible=value;if(name==='events')eventsVisible=value;if(name==='pedestrians')pedestrians.forEach(p=>p.g.visible=value);},
     view:focusIntersection,
     zoom(amount){if(navigation.mode==='street')navigation.nudge(amount>1?'forward':'back');else{camera.zoom=THREE.MathUtils.clamp(camera.zoom*amount,.1,5);camera.updateProjectionMatrix();}},
