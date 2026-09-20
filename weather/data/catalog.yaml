@@ -1,0 +1,101 @@
+schema_version: 1
+generated_at: '2026-09-20T04:44:05.374179+00:00'
+attribution: Weather data by Open-Meteo.com, ERA5 reanalysis (Copernicus Climate Change
+  Service)
+requests:
+- id: open_meteo_fifth-meyran_201901_202512
+  site_id: fifth-meyran
+  site_name: Fifth Avenue / Meyran Avenue
+  requested_latitude: 40.441163
+  requested_longitude: -79.959277
+  start_date: '2019-01-01'
+  end_date: '2025-12-31'
+  covers: crash_events window 2019-2025
+  path: raw/fifth-meyran_201901_202512.json
+  publisher: Open-Meteo
+  dataset: Historical Weather API (ERA5 reanalysis)
+  landing_page: https://open-meteo.com/en/docs/historical-weather-api
+  license: CC-BY 4.0 (Open-Meteo, ERA5 / Copernicus)
+  attribution: Weather data by Open-Meteo.com, ERA5 reanalysis (Copernicus Climate
+    Change Service)
+  retrieved_at: '2026-09-20T04:44:05.372618+00:00'
+  known_limitations:
+  - ERA5 reanalysis on a coarse grid; the returned grid point can sit several kilometers
+    from the requested intersection.
+  - Both MVP intersections fall in nearly the same grid cell, so between-intersection
+    weather differences are not meaningful.
+  - Reanalysis estimates conditions; it is not a gauge reading at the intersection.
+  - 'Cannot be joined to individual crashes: PennDOT suppresses exact crash dates.
+    Use crash_events.weather_code for per-crash conditions.'
+- id: open_meteo_atlantic-baum-liberty_201901_202512
+  site_id: atlantic-baum-liberty
+  site_name: Atlantic Avenue / Baum Boulevard / Liberty Avenue
+  requested_latitude: 40.456635
+  requested_longitude: -79.939643
+  start_date: '2019-01-01'
+  end_date: '2025-12-31'
+  covers: crash_events window 2019-2025
+  path: raw/atlantic-baum-liberty_201901_202512.json
+  publisher: Open-Meteo
+  dataset: Historical Weather API (ERA5 reanalysis)
+  landing_page: https://open-meteo.com/en/docs/historical-weather-api
+  license: CC-BY 4.0 (Open-Meteo, ERA5 / Copernicus)
+  attribution: Weather data by Open-Meteo.com, ERA5 reanalysis (Copernicus Climate
+    Change Service)
+  retrieved_at: '2026-09-20T04:44:05.374033+00:00'
+  known_limitations:
+  - ERA5 reanalysis on a coarse grid; the returned grid point can sit several kilometers
+    from the requested intersection.
+  - Both MVP intersections fall in nearly the same grid cell, so between-intersection
+    weather differences are not meaningful.
+  - Reanalysis estimates conditions; it is not a gauge reading at the intersection.
+  - 'Cannot be joined to individual crashes: PennDOT suppresses exact crash dates.
+    Use crash_events.weather_code for per-crash conditions.'
+- id: open_meteo_penn-corridor-study_202112_202112
+  site_id: penn-corridor-study
+  site_name: Penn Avenue Rightsizing study corridor
+  requested_latitude: 40.451693
+  requested_longitude: -79.983131
+  start_date: '2021-12-01'
+  end_date: '2021-12-31'
+  covers: interventions.csv before_period 2021-12
+  path: raw/penn-corridor-study_202112_202112.json
+  publisher: Open-Meteo
+  dataset: Historical Weather API (ERA5 reanalysis)
+  landing_page: https://open-meteo.com/en/docs/historical-weather-api
+  license: CC-BY 4.0 (Open-Meteo, ERA5 / Copernicus)
+  attribution: Weather data by Open-Meteo.com, ERA5 reanalysis (Copernicus Climate
+    Change Service)
+  retrieved_at: '2026-09-20T04:44:05.374112+00:00'
+  known_limitations:
+  - ERA5 reanalysis on a coarse grid; the returned grid point can sit several kilometers
+    from the requested intersection.
+  - Both MVP intersections fall in nearly the same grid cell, so between-intersection
+    weather differences are not meaningful.
+  - Reanalysis estimates conditions; it is not a gauge reading at the intersection.
+  - 'Cannot be joined to individual crashes: PennDOT suppresses exact crash dates.
+    Use crash_events.weather_code for per-crash conditions.'
+- id: open_meteo_penn-corridor-study_202604_202604
+  site_id: penn-corridor-study
+  site_name: Penn Avenue Rightsizing study corridor
+  requested_latitude: 40.451693
+  requested_longitude: -79.983131
+  start_date: '2026-04-01'
+  end_date: '2026-04-30'
+  covers: interventions.csv after_period 2026-04
+  path: raw/penn-corridor-study_202604_202604.json
+  publisher: Open-Meteo
+  dataset: Historical Weather API (ERA5 reanalysis)
+  landing_page: https://open-meteo.com/en/docs/historical-weather-api
+  license: CC-BY 4.0 (Open-Meteo, ERA5 / Copernicus)
+  attribution: Weather data by Open-Meteo.com, ERA5 reanalysis (Copernicus Climate
+    Change Service)
+  retrieved_at: '2026-09-20T04:44:05.374175+00:00'
+  known_limitations:
+  - ERA5 reanalysis on a coarse grid; the returned grid point can sit several kilometers
+    from the requested intersection.
+  - Both MVP intersections fall in nearly the same grid cell, so between-intersection
+    weather differences are not meaningful.
+  - Reanalysis estimates conditions; it is not a gauge reading at the intersection.
+  - 'Cannot be joined to individual crashes: PennDOT suppresses exact crash dates.
+    Use crash_events.weather_code for per-crash conditions.'

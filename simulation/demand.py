@@ -9,6 +9,7 @@ from pathlib import Path
 
 from simulation.interventions import Scenario
 from simulation.models import Calibration
+from weather import apply_to_vtype, apply_to_pedestrian_rate
 
 MPH_TO_MPS = 0.44704
 
@@ -93,22 +94,23 @@ def write_routes(
     )
     driver_sigma = 0.5  # SUMO's default driver-imperfection value.
     root = ET.Element("routes")
-    ET.SubElement(
-        root,
-        "vType",
-        {
-            "id": "calibrated_passenger",
-            "vClass": "passenger",
-            "accel": "2.6",
-            "decel": "4.5",
-            "sigma": f"{driver_sigma:.2f}",
-            "length": "5.0",
-            "minGap": "2.5",
-            "maxSpeed": f"{effective_limit * MPH_TO_MPS:.3f}",
-            "speedFactor": f"{median_factor:.3f}",
-            "speedDev": f"{speed_deviation:.3f}",
-        },
-    )
+    vtype_attributes = {
+        "id": "calibrated_passenger",
+        "vClass": "passenger",
+        "accel": "2.6",
+        "decel": "4.5",
+        "sigma": f"{driver_sigma:.2f}",
+        "length": "5.0",
+        "minGap": "2.5",
+        "maxSpeed": f"{effective_limit * MPH_TO_MPS:.3f}",
+        "speedFactor": f"{median_factor:.3f}",
+        "speedDev": f"{speed_deviation:.3f}",
+    }
+    # Weather changes vehicle physics and driver behaviour before the run, so
+    # the safety result emerges from the simulation instead of being applied to
+    # it afterwards. Clear weather leaves the calibrated values untouched.
+    vtype_attributes = apply_to_vtype(vtype_attributes, scenario.weather)
+    ET.SubElement(root, "vType", vtype_attributes)
     for index, edges in enumerate(routes):
         ET.SubElement(root, "route", {"id": f"crossing_{index}", "edges": " ".join(edges)})
 
@@ -134,7 +136,8 @@ def write_routes(
     pedestrian_randomizer = random.Random(seed ^ 0x5EED5EED)
     pedestrian_departures = _poisson_departures(
         pedestrian_randomizer,
-        pedestrian_config.pedestrians_per_hour,
+        # Fewer people walk in rain and snow, which changes conflict exposure.
+        apply_to_pedestrian_rate(pedestrian_config.pedestrians_per_hour, scenario.weather),
         max(0.0, duration_s - 60.0),
         ensure_one=bool(pedestrian_routes),
     )

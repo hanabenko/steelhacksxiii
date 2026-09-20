@@ -7,6 +7,7 @@ from dataclasses import dataclass, field
 from typing import Any
 
 from simulation.models import Calibration
+from weather import DEFAULT_WEATHER, get_profile
 
 
 @dataclass(frozen=True)
@@ -70,9 +71,12 @@ class Scenario:
     interventions: tuple[Intervention, ...] | list[Intervention] = ()
     scenario_name: str | None = None
     vehicle_demand_vehicles_per_hour: float | None = None
+    weather: str = DEFAULT_WEATHER
 
     def __post_init__(self) -> None:
         object.__setattr__(self, "interventions", tuple(self.interventions))
+        # Raises on an unknown condition rather than silently simulating clear.
+        get_profile(self.weather)
         if (
             self.vehicle_demand_vehicles_per_hour is not None
             and self.vehicle_demand_vehicles_per_hour <= 0
@@ -93,8 +97,9 @@ class Scenario:
     def name(self) -> str:
         if self.scenario_name:
             return self.scenario_name
+        suffix = "" if self.weather == DEFAULT_WEATHER else f"-{self.weather}"
         if not self.interventions:
-            return "baseline-osm"
+            return f"baseline-osm{suffix}"
         parts = []
         for intervention in self.interventions:
             if isinstance(intervention, SpeedLimitChange):
@@ -103,7 +108,7 @@ class Scenario:
                 parts.append(
                     f"signal-{intervention.main_green_s:g}-{intervention.side_green_s:g}"
                 )
-        return "+".join(parts)
+        return "+".join(parts) + suffix
 
     def effective_speed_limit_mph(self, calibration: Calibration | None) -> float:
         for intervention in self.interventions:
@@ -119,4 +124,5 @@ class Scenario:
             "scenario_name": self.name,
             "interventions": [item.to_dict() for item in self.interventions],
             "vehicle_demand_vehicles_per_hour": self.vehicle_demand_vehicles_per_hour,
+            "weather": get_profile(self.weather).to_dict(),
         }
