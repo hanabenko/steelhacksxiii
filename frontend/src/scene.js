@@ -173,7 +173,7 @@ export function createIntersection(container, onPlace, onEvent) {
     mark.position.set(point.x,0,point.z);scene.add(mark);bloodMarks.push({mark,age:0});
     pedestrianAccidents++;onEvent({type:'pedestrian-accident',count:pedestrianAccidents});
   }
-  for(let i=0;i<16;i++){
+  for(let i=0;i<72;i++){
     const g=new THREE.Group();box(.5,1,.4,0,.95,0,['#ce8653','#4d7770','#e5d7b3','#899aad'][i%4],g);
     const head=new THREE.Mesh(new THREE.SphereGeometry(.25,8,6),mat('#bca285'));head.position.y=1.75;g.add(head);
     const legs=[],arms=[];
@@ -181,7 +181,7 @@ export function createIntersection(container, onPlace, onEvent) {
       const leg=new THREE.Group();leg.position.set(side*.14,.66,0);g.add(leg);box(.16,.63,.19,0,-.31,0,'#435249',leg);box(.18,.12,.29,0,-.6,.05,'#263543',leg);legs.push(leg);
       const arm=new THREE.Group();arm.position.set(side*.32,1.36,0);g.add(arm);box(.13,.58,.15,0,-.26,0,'#bca285',arm);arms.push(arm);
     }
-    const person={g,legs,arms,p:-55+i*7,side:i%2?9:-9};const start=roadPoint(roadFeatures,'Forbes Avenue','x',person.p,person.side);g.position.set(start.x,.28,start.z);
+    const person={g,legs,arms,p:-72+(i*17)%144,side:(i%2?1:-1)*(9+Math.floor(i/4)%3*.65),road:i%4<2?'Forbes Avenue':'Fifth Avenue',enabled:i<48};const start=roadPoint(roadFeatures,person.road,'x',person.p,person.side);g.position.set(start.x,.28,start.z);
     scene.add(g);pedestrians.push(person);
   }
   const halo=new THREE.Mesh(new THREE.RingGeometry(2.6,3.1,48),new THREE.MeshBasicMaterial({color:0xe6a34a,transparent:true,opacity:.8,side:THREE.DoubleSide}));halo.rotation.x=-Math.PI/2;halo.visible=false;scene.add(halo);
@@ -226,9 +226,9 @@ export function createIntersection(container, onPlace, onEvent) {
     signalLamps.forEach(({lamp,axis,index})=>{const state=axis==='x'?signals.penn:signals.cross;const lit=index===({red:0,amber:1,green:2}[state]);const c=lit?[0xff493e,0xffbf35,0x45ed99][index]:0x172231;lamp.material.color.setHex(c);lamp.material.emissive.setHex(lit?c:0);lamp.scale.setScalar(lit?1.12:1);});
     if(!replayLayer.active){
     renderer.domElement.dataset.incident=collision.update(paused?0:realDt,eventsVisible,wallDt);
-    const hurt=pedestrians.find(p=>p.injured),incident=collision.incident||(hurt?{x:hurt.g.position.x,z:hurt.g.position.z,radius:2}:null);
+    const hurt=pedestrians.find(p=>p.enabled&&p.injured),incident=collision.incident||(hurt?{x:hurt.g.position.x,z:hurt.g.position.z,radius:2}:null);
     const oldDistances=traffic.vehicles.map(v=>v.s);
-    traffic.update(replayLayer.active?0:dt,signals,designItems,incident,pedestrians.map(p=>({x:p.g.position.x,z:p.g.position.z})),settings.conditions);
+    traffic.update(replayLayer.active?0:dt,signals,designItems,incident,pedestrians.filter(p=>p.enabled).map(p=>({x:p.g.position.x,z:p.g.position.z})),settings.conditions);
     cars.forEach((car,i)=>{const vehicle=traffic.vehicles[i];car.g.visible=vehicle.enabled;car.g.position.set(vehicle.pose.x,.25,vehicle.pose.z);
       const delta=Math.atan2(Math.sin(vehicle.pose.angle-car.g.rotation.y),Math.cos(vehicle.pose.angle-car.g.rotation.y));car.g.rotation.y+=delta*Math.min(1,dt*9);
       animateVehicleWheels(car,Math.max(0,vehicle.s-oldDistances[i]));
@@ -241,10 +241,11 @@ export function createIntersection(container, onPlace, onEvent) {
 
     });
     pedestrians.forEach((p,i)=>{
-      const before=roadPoint(roadFeatures,'Forbes Avenue','x',p.p,p.side);if(!before)return;
-      const next=roadPoint(roadFeatures,'Forbes Avenue','x',p.p+2,p.side);
+      if(!p.enabled){p.g.visible=false;return;}
+      const before=roadPoint(roadFeatures,p.road,'x',p.p,p.side);if(!before)return;
+      const next=roadPoint(roadFeatures,p.road,'x',p.p+2,p.side);
       updatePedestrianReaction(p,i,dt,before,incident,traffic.vehicles,next);
-      const route=roadPoint(roadFeatures,'Forbes Avenue','x',p.p,p.side);
+      const route=roadPoint(roadFeatures,p.road,'x',p.p,p.side);
       if(dt>0&&recordPedestrianContact(p,before,route,traffic.vehicles))markPedestrianAccident(p,route);
       if(route)p.g.position.set(route.x,.28,route.z);
       if(!p.reacting&&p.wait<=0)p.lookAngle=route.angle;
@@ -254,10 +255,11 @@ export function createIntersection(container, onPlace, onEvent) {
       p.legs.forEach((leg,j)=>{const target=Math.sin((p.walkPhase||0)+j*Math.PI)*Math.min(.35,Math.abs(p.velocity||0)*.35);leg.rotation.x+=(target-leg.rotation.x)*(1-Math.exp(-dt*12));});
       p.arms.forEach((arm,j)=>{const target=-Math.sin((p.walkPhase||0)+j*Math.PI)*Math.min(.25,Math.abs(p.velocity||0)*.25);arm.rotation.x+=(target-arm.rotation.x)*(1-Math.exp(-dt*12));});
       if(p.injured)p.injuryAge=(p.injuryAge||0)+wallDt;
-      if(p.p>75||p.injured&&p.injuryAge>=2){p.p=-75;p.injured=false;p.injuryTime=0;p.injuryAge=0;p.velocity=0;p.wait=1.2;p.g.rotation.x=0;const entry=roadPoint(roadFeatures,'Forbes Avenue','x',p.p,p.side);p.g.position.set(entry.x,.28,entry.z);}
+      if(p.p>75||p.injured&&p.injuryAge>=2){p.p=-75;p.injured=false;p.injuryTime=0;p.injuryAge=0;p.velocity=0;p.wait=1.2;p.g.rotation.x=0;const entry=roadPoint(roadFeatures,p.road,'x',p.p,p.side);p.g.position.set(entry.x,.28,entry.z);}
       p.g.visible=pedestriansVisible;
     });
     for(const entry of [...bloodMarks]){entry.age+=wallDt;entry.mark.visible=eventsVisible;entry.mark.children.forEach(spot=>spot.material.opacity=.8*Math.min(1,(2-entry.age)/.4));if(entry.age>=2){disposeUpgrade(entry.mark);bloodMarks.splice(bloodMarks.indexOf(entry),1);}}
+    renderer.domElement.dataset.pedestrianCount=String(pedestrians.filter(p=>p.enabled).length);
     renderer.domElement.dataset.pedestrianAccidents=String(pedestrianAccidents);
     renderer.domElement.dataset.waitingPedestrians=String(pedestrians.filter(p=>p.waitingForTraffic).length);
     renderer.domElement.dataset.reactingCars=traffic.vehicles.filter(v=>v.enabled&&v.reacting).length;
@@ -311,8 +313,8 @@ export function createIntersection(container, onPlace, onEvent) {
       for(const item of items){const group=createUpgrade(item.type,item.zone,{intersection:item.intersection||DEFAULT_INTERSECTION});upgrades.add(group);if(item.type==='signal')group.traverse(lamp=>{if(lamp.userData.signalIndex!==undefined)signalLamps.push({lamp,axis:placementFor(item.type,item.zone,item.intersection||DEFAULT_INTERSECTION).axis,index:lamp.userData.signalIndex});});}
       refreshPreviews();
     },
-    setPaused(value){paused=value;},setSpeed(value){speed=value;},setSettings(value){settings={...value};environment.setConditions(value.conditions);cars.forEach((car,i)=>{traffic.vehicles[i].enabled=(i%14)<Math.max(3,Math.ceil(value.demand/1600*14));car.g.visible=traffic.vehicles[i].enabled;car.avMarker.visible=false;/* AV visualization disabled: (i*7%100)<value.av */});},
-    toggleLayer(name,value){if(name==='buildings')buildings.visible=value;if(name==='events')eventsVisible=value;if(name==='pedestrians'){pedestriansVisible=value;pedestrians.forEach(p=>p.g.visible=value);}},
+    setPaused(value){paused=value;},setSpeed(value){speed=value;},setSettings(value){settings={...value};pedestrians.forEach((p,i)=>{p.enabled=i<((value.pedestrianDemand??900)>900?72:48);p.g.visible=p.enabled&&pedestriansVisible;});environment.setConditions(value.conditions);cars.forEach((car,i)=>{traffic.vehicles[i].enabled=(i%14)<Math.max(3,Math.ceil(value.demand/1600*14));car.g.visible=traffic.vehicles[i].enabled;car.avMarker.visible=false;/* AV visualization disabled: (i*7%100)<value.av */});},
+    toggleLayer(name,value){if(name==='buildings')buildings.visible=value;if(name==='events')eventsVisible=value;if(name==='pedestrians'){pedestriansVisible=value;pedestrians.forEach(p=>p.g.visible=value&&p.enabled);}},
     view:focusIntersection,
     zoom(amount){if(navigation.mode==='street')navigation.nudge(amount>1?'forward':'back');else{camera.zoom=THREE.MathUtils.clamp(camera.zoom*amount,.1,5);camera.updateProjectionMatrix();}},
     dispose(){cancelAnimationFrame(frameId);observer.disconnect();navigation.dispose();environment.dispose();replayLayer.dispose();controls.dispose();clear(previews);clear(upgrades);labelLayer.remove();landmarkLayer.remove();scene.traverse(o=>{o.geometry?.dispose();if(o.material&&!materials.has(o.material.color?.getStyle()))o.material.dispose?.();});materials.forEach(m=>m.dispose());labelTextures.forEach(t=>t.dispose());renderer.dispose();renderer.domElement.remove();},

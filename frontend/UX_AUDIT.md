@@ -51,3 +51,25 @@ Unit tests cover weather, source speed factors, paired game baselines, and timed
 collision cleanup. Browser tests cover both walkthroughs, mode isolation, budget
 feedback, free-session restoration, results, and existing keyboard/mobile flows.
 Final test results are recorded in the task completion message.
+
+## Game exit follow-up
+
+- The top toolbar shows a labeled **Exit game** action in game mode, including on narrow mobile screens and during walkthroughs.
+- Exiting cancels baseline/design workers immediately. Session guards prevent a cancelled run from overwriting the restored simulation.
+- Previous free-simulation settings and results are retained, with panels closed to return to the main map.
+- Fixed the hidden close button on free-simulation results and refreshed toolbar icons after mode changes.
+
+## Navigation and live conditions follow-up
+
+- Navigation now sits 10 px below the actual header in both modes and at mobile widths.
+- Following-conflict notices sit 8 px below navigation and follow its expanded/collapsed height; mobile challenge notices move below them.
+- Placing a pothole or road closure resumes a paused live preview immediately. Existing traffic routing/braking reads the updated conditions on the next frame; no simulation run is required.
+- The free-simulation explanation uses dark text on its light background.
+
+## Challenge progression and road repairs
+
+- Added Next: Simulate in Design, Next: run & view impact in Simulate, and Next challenge in Impact, with Revise design for another attempt.
+- Every generated challenge now includes a pothole or an explicitly repairable damaged-road closure; rainy/storm conditions add difficulty rather than being the only problem.
+- Matching Road repair removes a pothole or reopens a damaged-road closure consistently in the geometry, live traffic, and modeled capacity/delay. Ordinary work-zone closures cannot be reopened by a repair.
+- Barriers remain a cheaper way to isolate a pothole, with a capacity tradeoff.
+- Hazard challenges award up to 50 points for addressing hazards and up to 50 for reducing modeled accidents. This gives road reopening visible credit even when accident counts stay unchanged.

@@ -208,8 +208,8 @@ test('landmarks remain on the map while navigation replaces the removed overlays
  const errors=[];page.on('pageerror',e=>errors.push(e.message));await page.goto('/');await enterGame(page);
  await expect(page.locator('.campus-jumps,.preview-badge,[data-focus]')).toHaveCount(0);
  for(const id of ['cathedral','towers','jefes'])await expect(page.locator('[data-landmark="'+id+'"]')).toBeVisible();
- const navigation=await page.locator('.navigation-panel').boundingBox();expect(navigation.x).toBe(25);expect(navigation.y).toBe(110);
- await page.setViewportSize({width:390,height:844});await page.reload();await enterGame(page);const mobile=await page.locator('.navigation-panel').boundingBox();expect(mobile.x).toBe(13);expect(mobile.y).toBe(86);
+ const navigation=await page.locator('.navigation-panel').boundingBox();expect(navigation.x).toBe(25);expect(navigation.y).toBe((await page.locator('.header').boundingBox()).y+(await page.locator('.header').boundingBox()).height+10);
+ await page.setViewportSize({width:390,height:844});await page.reload();await enterGame(page);const mobile=await page.locator('.navigation-panel').boundingBox();expect(mobile.x).toBe(13);expect(mobile.y).toBe((await page.locator('.header').boundingBox()).y+(await page.locator('.header').boundingBox()).height+10);
  await page.locator('#observe-toggle').click();await expect(page.locator('.navigation-panel')).not.toBeVisible();await page.locator('#observe-toggle').click();await expect(page.locator('.navigation-panel')).toBeVisible();expect(errors).toEqual([]);
 });
 

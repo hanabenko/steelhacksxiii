@@ -14,7 +14,7 @@ test('free mode opens settings without running; AV, budget and road dropdowns ar
 test('Play locks a random challenge; exit restores free weather and demand',async({page})=>{
  await page.goto('/');await page.locator('#quick-run').click();await page.locator('#weather').selectOption('snow');await page.locator('#demand').fill('1100');
  await page.locator('#play-mode').click();await expect(page.locator('body')).toHaveAttribute('data-mode','game');await expect(page.locator('.action-dock')).toBeVisible();await expect(page.locator('.navigation-panel')).toBeVisible();
- const nav=await page.locator('.navigation-panel').boundingBox();expect(nav.y).toBe(110);
+ const nav=await page.locator('.navigation-panel').boundingBox();expect(nav.y).toBe((await page.locator('.header').boundingBox()).y+(await page.locator('.header').boundingBox()).height+10);
  const budget=Number((await page.locator('#budget-hud').textContent()).replace(/\D/g,''));expect([60000,80000,100000]).toContain(budget);
  await page.locator('button[data-panel="simulation"]').click();for(const id of ['weather','closed-road','pothole-road','start-hour','scenario-budget','demand','green'])await expect(page.locator('#'+id)).toBeDisabled();await expect(page.locator('#add-pothole')).not.toBeVisible();
  await page.locator('#exit-game').click();await page.locator('#quick-run').click();await expect(page.locator('#weather')).toHaveValue('snow');await expect(page.locator('#demand')).toHaveValue('1100');await expect(page.locator('.action-dock')).not.toBeVisible();
@@ -56,4 +56,28 @@ test('game completes baseline before editing and compares an unchanged design fa
  await expect(page.locator('#scene canvas')).toHaveAttribute('data-playback-speed','1');
  const count=baseline.match(/Baseline: (\d+)/)[1];await expect(page.locator('#game-score')).toContainText('Your design '+count);
  await expect(page.locator('#placement-hint')).not.toBeVisible();
+});
+
+for(const kind of ['pothole','closure'])test(`placing a ${kind} resumes traffic immediately without a simulation run`,async({page})=>{
+ await page.goto('/');await page.locator('#view-top').click();await page.locator('#pause').click();
+ await page.locator('#quick-run').click();await page.locator('#add-'+kind).click();
+ const canvas=page.locator('#scene canvas'),before=await canvas.getAttribute('data-traffic-position');
+ await streetClick(page,40);await expect(page.locator('#hazard-list li')).toHaveCount(1);
+ await expect(page.getByRole('button',{name:'Pause animation',exact:true})).toBeVisible();
+ await expect.poll(()=>canvas.getAttribute('data-traffic-position')).not.toBe(before);
+ await expect(page.locator('#result-status')).toHaveText('SETTINGS UPDATED');
+ await expect(canvas).toHaveAttribute('data-traffic-source','illustrative');
+});
+
+for(const width of [1440,390])test(`navigation and conflict notice stay beneath the header at ${width}px`,async({page})=>{
+ await page.setViewportSize({width,height:1000});await page.goto('/');
+ const nav=page.locator('.navigation-panel'),chip=page.locator('#event-chip');
+ await nav.evaluate(el=>el.open=true);await chip.evaluate(el=>{el.hidden=false;el.querySelector('span').textContent='Following conflict · TTC 1.2s';});
+ await expect.poll(async()=>{const n=await nav.boundingBox(),h=await page.locator('.header').boundingBox();return Math.round(n.y-h.y-h.height)}).toBe(10);
+ for(const expanded of [true,false,true]){
+  await nav.evaluate((el,open)=>el.open=open,expanded);
+  await expect.poll(async()=>{const n=await nav.boundingBox(),c=await chip.boundingBox();return Math.round(c.y-n.y-n.height)}).toBe(8);
+  const n=await nav.boundingBox(),c=await chip.boundingBox();expect(c.x).toBe(n.x);expect(c.x+c.width).toBeLessThanOrEqual(width);
+ }
+ await expect(page.locator('#results-panel .comparison-explain')).toHaveCSS('color','rgb(38, 60, 85)');
 });

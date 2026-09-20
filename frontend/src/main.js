@@ -1,7 +1,7 @@
 import {gameComparison} from './game-trials.js';
 import {DRIVING_DATA} from './driving-data.js';
 import {historicalWeather,WEATHER_DATA} from './weather.js';
-import { makeScenario, DEFAULT_CONDITIONS, WEATHER } from './scenarios.js';
+import { makeScenario, DEFAULT_CONDITIONS, WEATHER, hazardProgress } from './scenarios.js';
 import {ROAD_BLOCKS} from './road-blocks.js';
 import './modes.css';
 import { COST_DATA } from './model.js';
@@ -133,6 +133,7 @@ let items = [],
 const simulationEndpoint = import.meta.env.VITE_SIMULATION_API_URL || "";
 let scene, tutorial;
 let gameBaseline=null;
+let gameSession=null;
 let gameMode=false, activeScenario=null, freeSession=null, budgetLimit=BUDGET, hazardTool=null;
 let assistant, sumoStudy;
 const services=createServices({base:import.meta.env.VITE_APP_API_URL||'/api'});
@@ -174,6 +175,7 @@ app.innerHTML = `
           ["speed", "Avg. speed", "mph"],
           ["delay", "Avg. delay", "sec / vehicle"],
           ["throughput", "Throughput", "vehicles / hour"],
+          ["pedestrianThroughput", "Pedestrian throughput", "crossings / hour · modeled"],
           ["access", "Pedestrian access", "index / 100"],
       ]
           .map(
@@ -293,7 +295,7 @@ function toast(message) {
 function markDirty() {
     assistant?.invalidate();
     sumoStudy?.clear();
-    if(gameMode&&gameBaseline)$('#game-score').textContent=`Baseline: ${gameBaseline.accidents} modeled accidents. Design changed — test again for your new score.`;
+    if(gameMode&&gameBaseline)$('#game-score').textContent=`Hazards addressed: ${hazardProgress(settings.conditions,items).addressed}/${hazardProgress(settings.conditions,items).total}. Baseline: ${gameBaseline.accidents} modeled accidents. Design changed — test again for your new score.`;
     revision++;
     $("#result-scope").disabled = true;
     result = null;
@@ -304,7 +306,7 @@ function markDirty() {
     $("#result-status").classList.remove("complete");
     $("#score").innerHTML = "—<small>/ 100</small>";
     $("#score-ring").style.strokeDashoffset = 176;
-    for (const key of ["risk", "speed", "delay", "throughput", "access"]) {
+    for (const key of ["risk", "speed", "delay", "throughput", "pedestrianThroughput", "access"]) {
         $(`#before-${key}`).textContent = "—";
         $(`#after-${key}`).textContent = "—";
         $(`#change-${key}`).textContent = "—";
@@ -492,7 +494,7 @@ document.addEventListener("dragend", () =>
     document.body.classList.remove("is-dragging"),
 );
 $("#cancel-placement").onclick = () => selected && chooseTool(selected);
-$("#results-run").onclick = () => openPanel("simulation");
+$("#results-run").onclick = () => gameMode?startChallenge():openPanel("simulation");
 $("#placed-list").onclick = (event) => {
     const button = event.target.closest("[data-remove]");
     if (!button || running) return;
@@ -605,7 +607,7 @@ function syncResultPresentation(){
     $('.result-scope').firstChild.textContent=gameMode?'Compare ':'View ';
     const headers=$('.metric-header').children;
     headers[1].hidden=!gameMode;headers[2].textContent=gameMode?'AFTER':'RESULT';headers[3].hidden=!gameMode;
-    for(const key of ['risk','speed','delay','throughput','access']){
+    for(const key of ['risk','speed','delay','throughput','pedestrianThroughput','access']){
         $('#before-'+key).hidden=!gameMode;$('#change-'+key).hidden=!gameMode;
     }
     for(const selector of ['.change-key','#compare','.score-card','.objectives'])$(selector).hidden=!gameMode;
@@ -634,8 +636,9 @@ function displayResult(network) {
     $("#score-ring").style.strokeDashoffset = 176 * (1 - (gameMode?network.score:r.score) / 100);
     $("#result-status").textContent = `${r.runs} RUNS`;
     $("#result-status").classList.add("complete");
-    for (const key of ["risk", "speed", "delay", "throughput", "access"]) {
-        const digits = key === "throughput" || key === "access" ? 0 : 1;
+    for (const key of ["risk", "speed", "delay", "throughput", "pedestrianThroughput", "access"]) {
+        if(!r.before[key]||!r.after[key]){for(const phase of ['before','after','change'])$('#'+phase+'-'+key).textContent='—';continue;}
+        const digits = key === "throughput" || key === "pedestrianThroughput" || key === "access" ? 0 : 1;
         $(`#before-${key}`).textContent = r.before[key].mean.toFixed(digits);
         const after = $(`#after-${key}`);
         after.textContent = r.after[key].mean.toFixed(digits);
@@ -665,7 +668,7 @@ function displayResult(network) {
     for (const [key, done] of [
         ["risk", r.reduction >= 20],
         ["flow", r.retained >= 95],
-        ["access", r.after.access.mean >= 65],
+        ["access", activeScenario?.pedestrianGoal?!!network.pedestrianObjective?.achieved:r.after.access.mean >= 65],
     ]) {
         $(`#objective-${key}`).classList.toggle("achieved", done);
         $(`#objective-${key} .objective-status`).textContent = done ? "✓" : "○";
@@ -809,6 +812,7 @@ $("#scenarios-button").onclick = () => {
 };
 $("#editor-tab").onclick = () => {
     $("#dialog").close();
+    if(gameMode){$("#exit-game").click();return;}
     openPanel(null);
     scene?.view(false);
 };
@@ -898,7 +902,7 @@ document.addEventListener("keydown", (event) => {
 
 const junctionJumps = document.createElement('div');
 // Keep navigation above the right-side panels on narrow screens.
-$('#app').append($('.navigation-panel'));
+$('#app').append($('.navigation-panel'),$('#event-chip'));
 $('.navigation-panel').insertAdjacentHTML('beforeend','<p class="preview-accidents">Pedestrian accidents · preview: <strong id="pedestrian-accident-count">0</strong></p>');
 junctionJumps.className = 'intersection-jumps';
 junctionJumps.innerHTML = '<button id="previous-intersection" aria-label="Previous intersection" title="Previous intersection">←</button><span id="jump-intersection-name">Jump to intersection</span><button id="next-intersection" aria-label="Next intersection" title="Next intersection">→</button>';
@@ -969,7 +973,10 @@ $("#collision-demo").onclick = () => {
 $('#cost-sources').onclick=()=>dialog('Oakland cost sources',`<p>${COST_DATA.note}</p><p><strong>Local benchmark:</strong> Terrace / DeSoto’s multi-block safety project was reported at about $110,000 in 2025. It is not a per-upgrade rate.</p><ul>${COST_DATA.sources.map(source=>`<li><a href="${source.url}" target="_blank" rel="noreferrer">${source.title}</a> · ${source.publisher}${source.costBand?' · '+source.costBand:''}</li>`).join('')}</ul><p>Tool prices are labeled planning allowances. Design, drainage, utilities, accessibility, procurement and inflation require a project-specific estimate.</p>`);
 
 function syncModeControls(){
-    $('#run').textContent=gameMode?'Test my design':'Run simulation';
+    $("#editor-tab").innerHTML=gameMode?"← Exit game":icon("Box")+" Explore";
+    $("#editor-tab").classList.toggle("game-exit",gameMode);
+    $("#editor-tab").setAttribute("aria-label",gameMode?"Exit game and return to main page":"Explore main page");
+    $('#run').textContent=gameMode?'Next: run & view impact →':'Run simulation';
     $('#quick-run').innerHTML=icon('Play')+(gameMode?' Test my design':' Run simulation');
     $('#quick-run').setAttribute('aria-label',gameMode?'Test my design now':'Run simulation settings');
     $('#runs').disabled=gameMode;
@@ -991,17 +998,23 @@ function syncModeControls(){
     $('#runs-slider').value=Math.min(500,settings.runs);$('#runs-value').textContent=settings.runs+' runs';
     $('#mode-explanation').textContent=gameMode?'Challenge conditions are locked. Use your budget to redesign the streets.':'Set weather and time, then place road conditions directly on the map. No build budget applies.';
     $('#traffic-data-note').textContent=`Car speed baseline: ${DRIVING_DATA.medianSpeedMph} mph median, ${DRIVING_DATA.p85SpeedMph} mph 85th percentile (${DRIVING_DATA.site}, ${DRIVING_DATA.observedAt.slice(0,10)}; ${DRIVING_DATA.source}). Nearby proxy, not a current campus measurement. Demand is your scenario setting.`;
+    $('#objective-access strong').textContent=activeScenario?.pedestrianGoal?'Move more students':'Put people first';
+    $('#objective-access small').textContent=activeScenario?.pedestrianGoal?'Increase campus pedestrian throughput by '+activeScenario.pedestrianGoal+'%':'Reach 65 pedestrian access';
+    const scoreNote=$('.game-evaluation small');if(scoreNote)scoreNote.textContent=activeScenario?.pedestrianGoal?'Score: 40 points for pedestrian throughput progress, 30 for road hazards, 30 for reducing modeled accidents. Pedestrian demand/capacity are illustrative assumptions, not measured campus counts.':'Score: 50 points for addressing road hazards + up to 50 for reducing modeled accidents. Paired seeded trials, not measured crashes. Traffic preview is illustrative.';
     syncResultPresentation();
-    $('#results-run').textContent=gameMode?'Review challenge settings →':'Set up a simulation →';
+    $('#results-run').textContent=gameMode?'Next challenge →':'Set up a simulation →';
+    $('#results-panel .return-simulation').textContent=gameMode?'← Revise design':'← Simulation settings';
     $('.seed-tag').textContent=gameMode?'Seed 42 · paired trials':'Seed 42 · repeatable trials';
-    scene?.setSettings(settings);updateDesign();renderConditions();
+    scene?.setSettings(settings);updateDesign();renderConditions();refreshIcons();
 }
-async function startChallenge(){
+async function startChallenge(kind){
     if(running)return toast('Wait for the current run to finish.');
     if(tutorial?.active)tutorial.stop();
     setHazardTool(null);
     if(!gameMode)freeSession={items:structuredClone(items),settings:structuredClone(settings),budget:budgetLimit,result:structuredClone(result)};
-    activeScenario=makeScenario();gameMode=true;document.body.dataset.mode='game';
+    gameSession?.abort();
+    const session=gameSession=new AbortController();
+    activeScenario=makeScenario(Math.random,kind);gameMode=true;document.body.dataset.mode='game';
     settings=structuredClone(activeScenario.settings);settings.challenge={id:activeScenario.id,title:activeScenario.title};budgetLimit=activeScenario.budget;items=[];chooseTool(null);
     $('.scenario-banner').hidden=false;$('#scenario-title').textContent=activeScenario.title+' · '+money(budgetLimit);
     $('#scenario-description').textContent=activeScenario.description;
@@ -1009,25 +1022,33 @@ async function startChallenge(){
     gameBaseline=null;running=true;$('#test-design').disabled=true;$('#run').disabled=true;$('#quick-run').disabled=true;
     $('#game-score').textContent='Calculating the original street baseline…';
     try {
-        gameBaseline=await gameTrials([],settings);
+        const baseline=await gameTrials([],settings,undefined,session.signal);
+        if(gameSession!==session)return;
+        gameBaseline=baseline;
         $('#game-score').textContent=`Baseline: ${gameBaseline.accidents} modeled accidents across ${settings.runs} trials. Add upgrades, then test your design.`;
-    } catch(error) { $('#game-score').textContent='Baseline failed: '+error.message+'. Start a new challenge to retry.'; }
-    finally { running=false;$('#test-design').disabled=!gameBaseline;$('#run').disabled=!gameBaseline;$('#quick-run').disabled=!gameBaseline; }
+    } catch(error) { if(gameSession!==session)return; $('#game-score').textContent='Baseline failed: '+error.message+'. Start a new challenge to retry.'; }
+    finally { if(gameSession===session){ running=false;$('#test-design').disabled=!gameBaseline;$('#run').disabled=!gameBaseline;$('#quick-run').disabled=!gameBaseline; } }
 
 }
 $('#play-mode').onclick=startChallenge;$('#new-challenge').onclick=startChallenge;
+$('#new-challenge').insertAdjacentHTML('afterend','<button id="campus-challenge">Campus class change</button>');
+$('#campus-challenge').onclick=()=>startChallenge('campus');
 $('#exit-game').onclick=()=>{
-    if(running)return toast('Wait for the current run to finish.');
+    if(!gameMode)return;
+    gameSession?.abort();gameSession=null;running=false;finishFastSimulation();
     if(tutorial?.active)tutorial.stop();
     setHazardTool(null);
     gameMode=false;$('#run').disabled=false;$('#quick-run').disabled=false;document.body.dataset.mode='simulation';activeScenario=null;$('.scenario-banner').hidden=true;
     items=freeSession?.items||[];settings=freeSession?.settings||{...DEFAULT_SETTINGS,conditions:{...DEFAULT_CONDITIONS},budget:BUDGET};budgetLimit=freeSession?.budget??BUDGET;
     chooseTool(null);markDirty();syncModeControls();
     if(freeSession?.result){result=freeSession.result;$('#result-scope').value='network';displayResult(result);}
-    else openPanel(null);
+    openPanel(null);scene?.view(false);$('#play-mode').focus();
 };
 $('#free-design').hidden=true;$('#free-results').remove();
-for(const button of document.querySelectorAll('.return-simulation'))button.onclick=()=>openPanel('simulation');
+for(const button of document.querySelectorAll('.return-simulation')){button.textContent=button.closest('#design-panel')?'Next: Simulate →':gameMode?'← Revise design':'← Simulation settings';button.onclick=()=>openPanel(button.closest('#design-panel')?'simulation':gameMode?'design':'simulation',{focus:true});}
+$('#design-panel .return-simulation').classList.add('step-next');
+$('#run').classList.add('step-next');
+$('#results-run').classList.add('step-next');
 function changeConditions(event){
     if(gameMode||running)return;
     const parse=id=>{const value=$('#'+id).value;if(!value)return null;const [intersection,zone]=value.split('/');return{intersection,zone};};
@@ -1063,6 +1084,7 @@ function placeCondition(kind,point){
         settings.conditions.potholes=[...(settings.conditions.potholes||[]),{id:crypto.randomUUID(),x:point.x,z:point.z,intersection:point.block.intersection}];
     }
     markDirty();scene?.setSettings(settings);renderConditions();
+    if(paused)$('#pause').click();
     toast(kind==='closure'?point.block.name+' block closed at both ends.':'Large pothole placed. Nearby traffic slows down.');
 }
 function renderConditions(){
@@ -1078,14 +1100,25 @@ $('#clear-hazards').onclick=()=>{if(gameMode||running)return;settings.conditions
 document.addEventListener('keydown',event=>{if(event.key==='Escape'&&hazardTool)setHazardTool(null);});
 
 // Expanded navigation must never cover the challenge notice on narrow screens.
-new ResizeObserver(entries=>document.body.style.setProperty('--navigation-bottom',entries[0].target.getBoundingClientRect().bottom+'px')).observe($('.navigation-panel'));
+function positionNavigation(){
+    document.body.style.setProperty('--header-bottom',$('.header').getBoundingClientRect().bottom+'px');
+    document.body.style.setProperty('--navigation-bottom',$('.navigation-panel').getBoundingClientRect().bottom+'px');
+    document.body.style.setProperty('--conflict-space',($('#event-chip').hidden?0:$('#event-chip').getBoundingClientRect().height+8)+'px');
+}
+const navigationLayout=new ResizeObserver(positionNavigation);
+for(const element of [$('.header'),$('.navigation-panel'),$('#event-chip')])navigationLayout.observe(element);
+window.addEventListener('resize',positionNavigation);
+positionNavigation();
 
-$('.scenario-banner').insertAdjacentHTML('beforeend','<div class="game-evaluation"><p id="game-score" role="status"></p><button id="test-design">Test my design</button><small>Modeled game accidents · paired seeded trials, not measured crashes. Traffic preview is illustrative.</small></div>');
-function gameTrials(upgrades,config,onProgress){
+$('.scenario-banner').insertAdjacentHTML('beforeend','<div class="game-evaluation"><p id="game-score" role="status"></p><button id="test-design">Test my design</button><small>Score: 50 points for addressing road hazards + up to 50 for reducing modeled accidents. Paired seeded trials, not measured crashes. Traffic preview is illustrative.</small></div>');
+function gameTrials(upgrades,config,onProgress,signal){
     return new Promise((resolve,reject)=>{
+        if(signal?.aborted){reject(new DOMException('Game exited','AbortError'));return;}
         const worker=new Worker(new URL('./game-worker.js',import.meta.url),{type:'module'});
-        const timer=setTimeout(()=>{worker.terminate();reject(new Error('Trial timeout'));},60000);
-        const finish=()=>{clearTimeout(timer);worker.terminate();};
+        const finish=()=>{clearTimeout(timer);signal?.removeEventListener('abort',abort);worker.terminate();};
+        const abort=()=>{finish();reject(new DOMException('Game exited','AbortError'));};
+        const timer=setTimeout(()=>{finish();reject(new Error('Trial timeout'));},60000);
+        signal?.addEventListener('abort',abort,{once:true});
         worker.onerror=event=>{finish();reject(new Error(event.message));};
         worker.onmessage=({data})=>{if(data.error){finish();reject(new Error(data.error));}else if(data.done){finish();resolve(data);}else onProgress?.(data);};
         worker.postMessage({items:upgrades,settings:config,visible:!!onProgress});
@@ -1093,19 +1126,21 @@ function gameTrials(upgrades,config,onProgress){
 }
 $('#test-design').onclick=async()=>{
     if(running||!gameBaseline)return;
+    const session=gameSession;
     running=true;$('#test-design').disabled=true;$('#run').disabled=true;$('#quick-run').disabled=true;chooseTool(null);openPanel(null);
     startFastSimulation();
     try {
         const next=await gameTrials(items,settings,progress=>{
             $('#game-score').textContent=`Testing ${progress.completed}/${settings.runs} trials · ${progress.accidents} modeled accidents so far · baseline ${gameBaseline.accidents}`;
-        });
-        const comparison=gameComparison(gameBaseline,next);
+        },session.signal);
+        if(gameSession!==session)return;
+        const comparison=gameComparison(gameBaseline,next,{conditions:settings.conditions,items,pedestrianGoal:activeScenario.pedestrianGoal});
         const {saved,improvement,score}=comparison;
         result=comparison.result;displayResult(result);
         assistant?.debrief();
-        $('#game-score').textContent=`Baseline ${gameBaseline.accidents} → Your design ${next.accidents} modeled accidents · ${saved>=0?saved+' fewer':Math.abs(saved)+' more'} (${improvement}%) · Score ${score}/100`;
-    } catch(error){$('#game-score').textContent='Test failed: '+error.message+'. Try again.';}
-    finally{finishFastSimulation();running=false;$('#test-design').disabled=false;$('#run').disabled=false;$('#quick-run').disabled=false;}
+        $('#game-score').textContent=`Baseline ${gameBaseline.accidents} → Your design ${next.accidents} modeled accidents · ${saved>=0?saved+' fewer':Math.abs(saved)+' more'} (${improvement}%)${result.pedestrianObjective?` · Pedestrian throughput +${result.pedestrianObjective.increase.toFixed(1)}% / ${result.pedestrianObjective.target}% target`:''} · Hazards addressed ${result.hazards.addressed}/${result.hazards.total} · Score ${score}/100`;
+    } catch(error){if(gameSession!==session)return;$('#game-score').textContent='Test failed: '+error.message+'. Try again.';}
+    finally{if(gameSession===session){finishFastSimulation();running=false;$('#test-design').disabled=false;$('#run').disabled=false;$('#quick-run').disabled=false;}}
 };
 
 let fastPreview=null;

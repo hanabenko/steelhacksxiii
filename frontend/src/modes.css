@@ -1,6 +1,6 @@
 /* Explicit free-simulation and challenge modes. */
 body[data-mode="simulation"] .action-dock,body[data-mode="simulation"] .scenario-banner{display:none!important}
-body[data-mode="game"] .play-mode,body[data-mode="game"] .free-actions,body[data-mode="game"] .return-simulation{display:none!important}
+body[data-mode="game"] .play-mode,body[data-mode="game"] .free-actions{display:none!important}
 .play-mode{position:fixed;bottom:27px;left:50%;transform:translateX(-50%);z-index:16;background:#ffcf51;color:#243858;border:2px solid #ffebac;border-bottom:5px solid #b88922;border-radius:14px;padding:17px 65px;font:700 20px Cantarell,sans-serif;box-shadow:0 5px 18px #19325440}
 .scenario-banner{position:fixed;top:110px;left:25px;width:560px;max-width:calc(100vw - 440px);z-index:14;background:#192f4ef5;color:white;border:2px solid #6486b4;border-radius:14px;padding:12px 15px;display:flex;gap:12px;flex-wrap:wrap}.scenario-banner[hidden]{display:none}.scenario-banner>div{width:100%}.scenario-banner strong{display:block;color:#ffda76;font-size:18px}.scenario-banner small{font-size:10px;letter-spacing:1px}.scenario-banner p{font-size:12px;line-height:1.4;margin:5px 0}.scenario-banner button,.free-actions button,.return-simulation{padding:7px 12px;border:1px solid #6486b4;border-radius:8px;color:white;background:#355780;font-weight:700}
 body[data-mode="game"] .navigation-panel{top:325px}
@@ -25,7 +25,16 @@ body .event-chip{top:auto;bottom:295px;left:50%;transform:translateX(-50%);z-ind
 #condition-controls input[type="date"]{display:block;width:100%;padding:8px;margin-top:5px;border:1px solid #8ba5c7;border-radius:6px;background:#edf4ff;color:#243958;font:inherit}#apply-weather-date{padding:8px 12px;border:1px solid #8ba5c7;border-radius:6px;background:#314c76;color:white}
 
 body[data-mode="simulation"] #results-panel .metric-header,body[data-mode="simulation"] #results-panel .metric-row{grid-template-columns:minmax(0,1fr) 100px}
-body[data-mode="simulation"] #results-panel>.section-heading:not(.result-heading),body[data-mode="simulation"] #results-panel>.mission-art,body[data-mode="simulation"] #results-panel>h3,body[data-mode="simulation"] #results-panel>.panel-description{display:none}
+body[data-mode="simulation"] #results-panel>.section-heading:not(.result-heading)>:not(.close-panel),body[data-mode="simulation"] #results-panel>.mission-art,body[data-mode="simulation"] #results-panel>h3,body[data-mode="simulation"] #results-panel>.panel-description{display:none}
 
 body[data-mode="simulation"] .upgrade-bar,body[data-mode="simulation"] .design-camera{display:none!important}
 body[data-mode="game"] .preview-accidents{display:none}
+
+.header #editor-tab.game-exit{font-size:12px;white-space:nowrap;font-weight:700}
+@media(max-width:600px){body[data-mode="game"] #scenarios-button{display:none}}
+
+/* Keep navigation and live conflict feedback together beneath the toolbar. */
+body[data-mode] .navigation-panel{top:calc(var(--header-bottom,88px) + 10px)}
+body[data-mode] #event-chip{position:fixed;top:calc(var(--navigation-bottom,150px) + 8px);bottom:auto;left:25px;right:auto;width:235px;max-width:calc(100vw - 26px);transform:none;white-space:normal;visibility:visible;z-index:14}
+body[data-mode="simulation"] #results-panel .comparison-explain{color:#263c55}
+@media(max-width:760px){body[data-mode] #event-chip{left:13px;width:calc(100vw - 26px)}body[data-mode="game"] .scenario-banner{top:calc(var(--navigation-bottom,120px) + var(--conflict-space,0px) + 10px)}}

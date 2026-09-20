@@ -1,5 +1,5 @@
 import * as THREE from 'three';
-import { DEFAULT_CONDITIONS, WEATHER } from './scenarios.js';
+import { DEFAULT_CONDITIONS, WEATHER, resolvedHazards } from './scenarios.js';
 import { createUpgrade, disposeUpgrade, placementFor } from './infrastructure.js';
 import {ROAD_BLOCKS} from './road-blocks.js';
 import {createBlockClosure,createPothole} from './hazard-meshes.js';
@@ -13,8 +13,9 @@ export function createEnvironment(scene,sun,ambient){
   const day=new THREE.Color('#d8e7f0'),night=new THREE.Color('#101a35'),storm=new THREE.Color('#637787');
   function rebuild(){
     for(const child of [...hazards.children])disposeUpgrade(child);
-    if(conditions.closure)hazards.add(createUpgrade('closure',conditions.closure.zone,{intersection:conditions.closure.intersection}));
-    const p=conditions.pothole;
+    const effective=resolvedHazards(conditions,upgrades);
+    if(effective.closure)hazards.add(createUpgrade('closure',effective.closure.zone,{intersection:effective.closure.intersection}));
+    const p=effective.pothole;
     if(p&&!upgrades.some(i=>i.type==='repair'&&i.intersection===p.intersection&&i.zone===p.zone)){
       const anchor=placementFor('repair',p.zone,p.intersection);hazards.add(createPothole(anchor.x,anchor.z));
     }

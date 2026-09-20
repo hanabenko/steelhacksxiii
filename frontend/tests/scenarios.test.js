@@ -8,8 +8,8 @@ import {createEnvironment} from '../src/environment.js';
 import map from '../src/data/intersection.json' with {type:'json'};
 const hazard={intersection:'pitt-forbes-bigelow',zone:'east'};
 test('random challenges cover weather, closures and potholes within valid budgets',()=>{
- const scenarios=[.05,.3,.55,.8].map(n=>makeScenario(()=>n));
- assert.equal(new Set(scenarios.map(s=>s.id)).size,4);
+ const scenarios=[.05,.25,.45,.65,.85].map(n=>makeScenario(()=>n));
+ assert.equal(new Set(scenarios.map(s=>s.id)).size,5);
  for(const s of scenarios){assert.ok(s.budget>=60000&&s.budget<=100000);assert.equal(s.settings.budget,s.budget);assert.doesNotThrow(()=>simulateNetwork([],s.settings));}
  assert.equal(scenarios[0].settings.conditions.weather,'rain');assert.equal(scenarios[1].settings.conditions.weather,'storm');assert.ok(scenarios[2].settings.conditions.closure);assert.ok(scenarios[3].settings.conditions.pothole);
 });
@@ -51,4 +51,28 @@ test('multiple block closures and potholes persist in conditions; AV coefficient
  const base=simulateNetwork([],settings);assert.deepEqual(base,simulateNetwork([],{...settings,av:100}));
  const exported=exportScenario([],settings,null);assert.equal(exported.settings.conditions.closures.length,1);assert.equal(exported.settings.conditions.potholes.length,1);
  assert.throws(()=>simulateNetwork([],{...settings,conditions:{...settings.conditions,closures:['not-a-block']}}),/closure/);
+});
+
+test('every challenge has an actionable road hazard and matching repairs reopen only damaged closures',()=>{
+ for(const n of [.05,.25,.45,.65,.85]){
+  const challenge=makeScenario(()=>n),c=challenge.settings.conditions;
+  assert.ok(c.pothole||c.closure?.repairable);assert.match(challenge.description,/\$8,000/);
+ }
+ const config={...DEFAULT_SETTINGS,demand:1200,conditions:{...DEFAULT_CONDITIONS,closure:{...hazard,repairable:true}}};
+ const base=simulateNetwork([],config),fixed=simulateNetwork([{type:'repair',...hazard}],config);
+ assert.ok(fixed.after.throughput.mean>base.after.throughput.mean);assert.ok(fixed.after.delay.mean<base.after.delay.mean);
+ for(const wrong of [{type:'repair',...hazard,zone:'west'},{type:'repair',...hazard,intersection:'pitt-fifth-bigelow'}])assert.deepEqual(simulateNetwork([wrong],config).after,base.after);
+ const workzone={...config,conditions:{...config.conditions,closure:hazard}};
+ assert.deepEqual(simulateNetwork([{type:'repair',...hazard}],workzone).after,simulateNetwork([],workzone).after);
+ assert.equal(config.conditions.closure.repairable,true);
+});
+
+test('matching road repair clears visible scenario barriers and restores live traffic behavior',()=>{
+ const conditions={...DEFAULT_CONDITIONS,closure:{...hazard,repairable:true}},repair={type:'repair',...hazard};
+ const scene=new THREE.Scene();scene.background=new THREE.Color();const env=createEnvironment(scene,new THREE.DirectionalLight(),new THREE.HemisphereLight());
+ env.setConditions(conditions);const hazards=scene.children.find(c=>c.isGroup);assert.equal(hazards.children.length,1);
+ env.setUpgrades([repair]);assert.equal(hazards.children.length,0);env.setUpgrades([]);assert.equal(hazards.children.length,1);env.dispose();
+ const fixed=createTraffic(map.features,2),normal=createTraffic(map.features,2);
+ for(let i=0;i<180;i++){fixed.update(1/60,{penn:'green',cross:'green'},[repair],null,[],conditions);normal.update(1/60,{penn:'green',cross:'green'},[],null,[],DEFAULT_CONDITIONS);}
+ for(let i=0;i<2;i++){assert.equal(fixed.vehicles[i].s,normal.vehicles[i].s);assert.equal(fixed.vehicles[i].speed,normal.vehicles[i].speed);assert.equal(fixed.vehicles[i].route.id,normal.vehicles[i].route.id);}
 });

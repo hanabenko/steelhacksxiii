@@ -48,3 +48,12 @@ test('game comparison uses its evaluated baseline at every locked signal duratio
   assert.deepEqual(upgraded.result.before,base.result.after);assert.ok(upgraded.result.after.risk.mean<upgraded.result.before.risk.mean);
  }
 });
+
+test('challenge score rewards fixing a road closure even when accident counts do not change',()=>{
+ const config={...settings,demand:1200,conditions:{...DEFAULT_CONDITIONS,closure:{...hazard,repairable:true}}},items=[{type:'repair',...hazard}];
+ const base=evaluateGame([],config),outcome=evaluateGame(items,config);
+ const comparison=gameComparison(base,outcome,{conditions:config.conditions,items});
+ assert.ok(comparison.result.after.throughput.mean>comparison.result.before.throughput.mean);
+ assert.equal(comparison.result.hazards.addressed,1);assert.ok(comparison.score>=50);
+ assert.equal(gameComparison(base,base,{conditions:config.conditions,items:[]}).score,0);
+});

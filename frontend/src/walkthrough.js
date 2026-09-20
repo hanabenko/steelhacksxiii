@@ -14,11 +14,11 @@ export function createWalkthrough({openPanel,getState}) {
     assistantStep,
   ];
   const gameSteps=[
-    {title:'Redesign the street',body:'This challenge fixes weather and traffic conditions and calculates an original-street baseline. Spend your budget on upgrades, then test whether your design improves the outcome.',panel:null,target:'.scenario-banner'},
+    {title:'Redesign the street',body:'This challenge fixes weather and traffic conditions and calculates an original-street baseline. Read the named hazard and approach. Road repair fixes potholes or reopens damaged roads; barriers isolate potholes but reduce capacity. Use Next: Simulate when your design is ready.',panel:null,target:'.scenario-banner'},
     {title:'Your challenge budget',budget:true,body:'Every upgrade has a price per approach. Placing it spends your challenge budget. Undo refunds the last upgrade; Reset refunds your design.',panel:'design',target:'.budget-card'},
     {title:'Place your first upgrade',body:'Choose a raised crosswalk and click a blue shape on the map, or use the keyboard approach buttons in Design. This changes your actual challenge design; you can undo it anytime.',panel:'design',target:'[data-tool="crosswalk"]',gate:s=>s.count>0,pending:'Place an upgrade to continue.'},
     {title:'Test your design',testDesign:true,body:'Click Test my design. Your changes and the original street use matched trials with the same weather and demand. The fast preview ends automatically when the run finishes.',panel:'simulation',target:'#test-design',gate:s=>!!s.result,pending:'Test your design to continue.'},
-    {title:'See what changed',body:'Compare Before, After, and Change to understand your upgrades. Lower delay or conflict proxy and higher throughput or access indicate improvements. Compare with original toggles the street design. Game accident counts are modeled, not measured crashes.',panel:'results',target:'.metric-table'},
+    {title:'See what changed',body:'Compare Before, After, and Change to understand your upgrades. Lower delay or conflict proxy and higher throughput or access indicate improvements. Compare with original toggles the street design. Use Revise design to make changes or Next challenge when you are done. Game accident counts are modeled, not measured crashes.',panel:'results',target:'.metric-table'},
     assistantStep,
   ];
   function restoreButton(){if(movedButton){movedButton.placeholder.replaceWith(movedButton.button);movedButton=null;}}
