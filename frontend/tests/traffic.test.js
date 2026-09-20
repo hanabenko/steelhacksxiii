@@ -25,7 +25,7 @@ test('traffic is frozen by zero dt and timestep subdivision is reproducible',()=
  a.vehicles.forEach((v,i)=>{assert.ok(Math.abs(v.s-b.vehicles[i].s)<.00001);assert.ok(v.speed>=0);});
 });
 test('scripted collision progresses through impact and fire, pauses, hides and clears',()=>{
- const scene=new THREE.Scene(),preview=createCollisionPreview(scene,[new THREE.Group(),new THREE.Group()]);preview.start();assert.equal(preview.update(0),'approach');assert.equal(preview.update(1.3),'impact');assert.equal(preview.update(0),'impact');assert.equal(preview.update(2),'fire');preview.update(0,false);assert.equal(scene.children[0].visible,false);assert.equal(preview.update(10),'idle');assert.equal(scene.children[0].visible,false);
+ const scene=new THREE.Scene(),preview=createCollisionPreview(scene,[new THREE.Group(),new THREE.Group()]);preview.start();assert.equal(preview.update(0),'approach');assert.equal(preview.update(1.3),'impact');assert.equal(preview.update(0),'impact');assert.equal(preview.update(.5),'fire');preview.update(0,false);assert.equal(scene.children[0].visible,false);assert.equal(preview.update(10),'idle');assert.equal(scene.children[0].visible,false);
 });
 
 import { updatePedestrianReaction } from '../src/pedestrian-reactions.js';
@@ -62,4 +62,23 @@ test('hazard detours join a clear forward lane and reject blocked alternatives',
  assert.ok(detour);assert.equal(detour.id,'other');assert.equal(poseAt(detour,detour.length).z,4);
  assert.equal(detourRoute(vehicle,[route,alternative],[pothole,{x:50,z:4}]),null);
  assert.equal(detourRoute(vehicle,[route],[pothole]),null);
+});
+
+test('collision clears two seconds after impact even while paused, and can restart',()=>{
+ const scene=new THREE.Scene(),preview=createCollisionPreview(scene,[new THREE.Group(),new THREE.Group()]);
+ preview.start();assert.equal(preview.update(1.2),'impact');assert.ok(preview.incident);
+ assert.equal(preview.update(0,true,1.99),'fire');assert.ok(preview.incident);
+ assert.equal(preview.update(0,true,.02),'idle');assert.equal(preview.incident,null);assert.equal(scene.children[0].visible,false);
+ preview.start();assert.equal(preview.update(0),'approach');preview.clear();assert.equal(preview.incident,null);assert.equal(scene.children[0].visible,false);
+});
+
+test('short collision preview exposes a real obstacle to nearby traffic and pedestrians, then clears it',()=>{
+ const scene=new THREE.Scene(),preview=createCollisionPreview(scene,[new THREE.Group(),new THREE.Group()]);
+ const traffic=createTraffic(map.features,1),v=traffic.vehicles[0];v.speed=5;
+ const ahead=poseAt(v.route,v.s+20);preview.start(ahead.x,ahead.z);preview.update(1.2);
+ traffic.update(.1,green,[],preview.incident);assert.equal(v.reacting,true);
+ const person={p:0};updatePedestrianReaction(person,0,.1,{x:ahead.x+3,z:ahead.z},preview.incident);
+ assert.equal(person.reacting,true);
+ preview.update(0,true,2.01);assert.equal(preview.incident,null);
+ traffic.update(.1,green,[],preview.incident);assert.equal(v.reacting,false);
 });

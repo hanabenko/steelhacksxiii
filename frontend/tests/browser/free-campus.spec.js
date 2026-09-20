@@ -23,7 +23,11 @@ test('street right-drag translates camera and collision replay respects pause wi
  const errors=[];page.on('pageerror',e=>errors.push(e.message));await page.goto('/');await enterGame(page);const canvas=page.locator('#scene canvas');const initialBudget=await page.locator('#budget-hud').textContent();
  await page.locator('button[data-navigation="street"]').click();const before=await canvas.getAttribute('data-camera-position');await page.mouse.move(700,450);await page.mouse.down({button:'right'});await page.mouse.move(800,510,{steps:8});await page.mouse.up({button:'right'});await expect.poll(()=>canvas.getAttribute('data-camera-position')).not.toBe(before);
  await page.locator('#pause').click();await page.locator('#collision-demo').click();await expect(canvas).toHaveAttribute('data-incident','approach');await page.waitForTimeout(350);await expect(canvas).toHaveAttribute('data-incident','approach');
- await page.locator('#pause').click();await expect(canvas).toHaveAttribute('data-incident','impact',{timeout:15000});await expect(canvas).toHaveAttribute('data-incident','fire',{timeout:15000});await expect.poll(async()=>Number(await canvas.getAttribute('data-reacting-cars'))).toBeGreaterThan(0);await expect.poll(async()=>Number(await canvas.getAttribute('data-reacting-pedestrians'))).toBeGreaterThan(0);await page.locator('#pause').click();await expect(page.locator('#budget-hud')).toHaveText(initialBudget);await expect(page.locator('#result-status')).toHaveText('DESIGN UPDATED');expect(errors).toEqual([]);
+ await page.locator('#pause').click();
+ await page.waitForFunction(()=>document.querySelector('#scene canvas').dataset.incident==='impact');
+ await page.waitForFunction(()=>document.querySelector('#scene canvas').dataset.incident==='fire');
+ await expect(canvas).toHaveAttribute('data-incident','idle',{timeout:2800});
+ await page.locator('#pause').click();await expect(page.locator('#budget-hud')).toHaveText(initialBudget);await expect(page.locator('#result-status')).toHaveText('DESIGN UPDATED');expect(errors).toEqual([]);
 });
 
 
@@ -82,4 +86,10 @@ test('design map arrows and rotation remain usable in street view',async({page})
  await page.setViewportSize({width:390,height:844});await page.getByRole('button',{name:'Jump to previous intersection',exact:true}).click();
  await expect(canvas).toHaveAttribute('data-viewed-intersection','pitt-forbes-bigelow');
  await switchPanel(page,'simulation');await expect(page.locator('.design-camera')).not.toBeVisible();
+});
+
+test('collision visual clears after two real seconds even if playback is paused after impact',async({page})=>{
+ await page.goto('/');await page.locator('#collision-demo').click();const canvas=page.locator('#scene canvas');
+ await page.waitForFunction(()=>document.querySelector('#scene canvas').dataset.incident==='impact');await page.locator('#pause').click();
+ await expect(canvas).toHaveAttribute('data-incident','idle',{timeout:2800});
 });

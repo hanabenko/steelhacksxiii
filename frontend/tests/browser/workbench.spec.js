@@ -107,9 +107,9 @@ test('editing and simulations remain usable when WebGL is unavailable',async({pa
    await expect(page.locator('#simulation-panel')).not.toBeVisible();
  });
 
-test('walkthrough guides a real upgrade, budget, run, and comparison',async({page})=>{
-  await page.goto('/');await page.getByRole('button',{name:'Start walkthrough'}).click();
-  await expect(page.locator('#tour-title')).toHaveText('Welcome to your street lab');
+test('game walkthrough guides a real upgrade, budget, run, and comparison',async({page})=>{
+  await page.goto('/');await enterGame(page);await page.getByRole('button',{name:'Start walkthrough'}).click();
+  await expect(page.locator('#tour-title')).toHaveText('Redesign the street');
   await page.locator('#tour-next').click();await expect(page.locator('.budget-card')).toBeVisible();
   await page.locator('#tour-next').click();await expect(page.locator('#tour-next')).toBeDisabled();
   await page.locator('[data-tool="crosswalk"]').click();await page.locator('[data-intersection="pitt-forbes-bigelow"][data-zone="east"]').click();
@@ -146,17 +146,20 @@ test('remove refunds the upgrade and invalidates comparison',async({page})=>{
   await expect(page.locator('#budget-receipt')).toContainText('$24,000 refunded');
 });
 
-test('mobile walkthrough can be completed without covering required controls',async({page})=>{
+test('mobile simulation walkthrough runs without entering the game or placing upgrades',async({page})=>{
   await page.setViewportSize({width:390,height:844});await page.goto('/');
   await page.getByRole('button',{name:'Start walkthrough'}).click();
-  await page.locator('#tour-next').click();await page.locator('#tour-next').click();
-  await page.locator('[data-tool="crosswalk"]').click();await page.locator('[data-intersection="pitt-forbes-bigelow"][data-zone="west"]').click();
-  await page.locator('#tour-next').click();await (await page.locator('body').getAttribute('data-mode')==='game'?page.locator('#test-design'):page.locator('#run')).click();
-  await expect(page.locator('#tour-next')).toBeEnabled();await page.locator('#tour-next').click();
-  await page.locator('#tour-next').click();
-  await expect(page.locator('#tour-title')).toHaveText('Ask your Street assistant');
-  await page.locator('#tour-next').click();
-  await expect(page.locator('.walkthrough')).not.toBeVisible();
+  await expect(page.locator('#tour-title')).toHaveText('Explore simulation mode');
+  await page.locator('#tour-next').click();await expect(page.locator('#weather')).toBeVisible();
+  await page.locator('#tour-next').click();await expect(page.locator('#tour-next')).toBeDisabled();
+  await page.locator('#run').click();await expect(page.locator('#tour-next')).toBeEnabled();
+  await page.locator('#tour-next').click();await expect(page.locator('#tour-title')).toHaveText('Read your results');
+  await expect(page.locator('.metric-header span:visible')).toHaveText(['METRIC','RESULT']);
+  await expect(page.locator('#before-risk')).toBeHidden();await expect(page.locator('#change-risk')).toBeHidden();
+  await expect(page.locator('#after-risk')).not.toHaveText('—');await expect(page.locator('#compare')).toBeHidden();
+  await expect(page.locator('body')).toHaveAttribute('data-mode','simulation');
+  await page.locator('#tour-next').click();await expect(page.locator('#tour-title')).toHaveText('Ask your Street assistant');
+  await page.locator('#tour-next').click();await expect(page.locator('.walkthrough')).toBeHidden();
   expect(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth)).toBe(true);
 });
 

@@ -5,7 +5,7 @@ async function streetClick(page,x){
 }
 test('free mode opens settings without running; AV, budget and road dropdowns are absent from the visible controls',async({page})=>{
  const errors=[];page.on('pageerror',e=>errors.push(e.message));await page.goto('/');
- await expect(page.getByRole('button',{name:'Play game'})).toBeVisible();await expect(page.locator('.action-dock')).not.toBeVisible();await expect(page.locator('.navigation-panel')).not.toBeVisible();await expect(page.locator('.location-bar')).toHaveCount(0);
+ await expect(page.getByRole('button',{name:'Play game'})).toBeVisible();await expect(page.locator('.action-dock')).not.toBeVisible();await expect(page.locator('.navigation-panel')).toBeVisible();await expect(page.locator('.location-bar')).toHaveCount(0);
  await page.locator('#quick-run').click();await expect(page.locator('#simulation-panel')).toBeVisible();await expect(page.locator('#result-status')).toHaveText('NOT RUN YET');
  for(const id of ['av','scenario-budget','closed-road','pothole-road','runs'])await expect(page.locator('#'+id)).not.toBeVisible();
  await page.locator('#demand').fill('1100');await page.locator('#weather').selectOption('storm');await page.locator('#quick-run').click();await expect(page.locator('#demand')).toHaveValue('1100');await expect(page.locator('#weather')).toHaveValue('storm');await expect(page.locator('#result-status')).not.toHaveText('100 RUNS',{timeout:15000});
@@ -51,7 +51,7 @@ test('game completes baseline before editing and compares an unchanged design fa
  const baseline=await page.locator('#game-score').textContent();
  await page.locator('#test-design').click();await expect(page.locator('#game-score')).toContainText('Testing');
  await expect(page.locator('#test-design')).toBeDisabled();
- await expect(page.locator('#game-score')).toContainText('0 prevented (0%)',{timeout:15000});
+ await expect(page.locator('#game-score')).toContainText('0 fewer (0%)',{timeout:15000});
  await expect(page.locator('#game-score')).toContainText('Score 0/100');
  await expect(page.locator('#scene canvas')).toHaveAttribute('data-playback-speed','1');
  const count=baseline.match(/Baseline: (\d+)/)[1];await expect(page.locator('#game-score')).toContainText('Your design '+count);

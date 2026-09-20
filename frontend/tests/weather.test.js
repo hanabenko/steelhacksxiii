@@ -32,3 +32,13 @@ test('bad weather lengthens the stopped queue gap and preserves the stop line',(
  }
  for(let i=1;i<gaps.length;i++)assert.ok(gaps[i]>gaps[i-1]);
 });
+
+import {DRIVING_DATA,observedSpeedMph,cruisingSpeed} from '../src/driving-data.js';
+test('cruising speeds and local baseline use the observed median and 85th percentile',()=>{
+ assert.equal(observedSpeedMph(.5),DRIVING_DATA.medianSpeedMph);
+ assert.equal(observedSpeedMph(.85),DRIVING_DATA.p85SpeedMph);
+ const traffic=createTraffic(map.features,42);
+ for(const [i,v] of traffic.vehicles.entries()){
+  assert.equal(v.desired,cruisingSpeed(v.kind,i));assert.ok(v.desired>0);assert.ok(v.desired<=DRIVING_DATA.speedLimitMph*.44704);
+ }
+});

@@ -1,0 +1,11 @@
+{
+  "source": "City of Pittsburgh / WPRDC traffic counts",
+  "site": "Fifth / Meyran",
+  "recordId": "428229895",
+  "observedAt": "2018-11-08 05:00:00+00:00",
+  "medianSpeedMph": 16.0,
+  "p85SpeedMph": 20.0,
+  "speedLimitMph": 25.0,
+  "dailyVehicles": 382.0,
+  "limitation": "Nearby observation used as a campus proxy; route mix, acceleration and capacity remain illustrative assumptions."
+}

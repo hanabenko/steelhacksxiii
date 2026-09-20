@@ -23,7 +23,7 @@ test('swept contact catches a vehicle passing through a person and records one a
  assert.equal(pedestrianContact({x:0,z:0},{x:0,z:0},v),true);
  assert.equal(pedestrianContact({x:4,z:0},{x:4,z:0},v),false);
  assert.equal(recordPedestrianContact(person,{x:0,z:0},{x:0,z:0},[v]),v);
- assert.equal(person.injured,true);assert.equal(v.speed,0);assert.equal(v.crashWait,10);
+ assert.equal(person.injured,true);assert.equal(v.speed,0);assert.equal(v.crashWait,2);
  assert.equal(recordPedestrianContact(person,{x:0,z:0},{x:0,z:0},[v]),null);
  const frozen=JSON.stringify(person);updatePedestrianReaction(person,0,0,{x:0,z:0},null);assert.equal(JSON.stringify(person),frozen);
 });

@@ -1,3 +1,4 @@
+import {observedSpeedMph} from './driving-data.js';
 import costs from './data/oakland-costs.json' with {type:'json'};
 import { WEATHER, DEFAULT_CONDITIONS, validateConditions } from './scenarios.js';
 import {ROAD_BLOCKS} from './road-blocks.js';
@@ -51,7 +52,7 @@ export function simulate(items, settings = DEFAULT_SETTINGS, seed = 42, {include
   const samples = { before: [], after: [] };
   for (let i=0; i<settings.runs; i++) {
     const demand = settings.demand * (0.85 + rng() * .3), noise = .9 + rng() * .2;
-    const base = { risk: 12.4 * demand / 800 * noise*weather.risk*(hasPothole?1.2:1)*hazardRisk, speed: (29 + (rng()-.5)*5)*weather.speed*(hasPothole?.8:1)*hazardSpeed, delay: 24 + demand / 90 + Math.max(0,demand-beforeCapacity)*.04+(hasPothole?6:0)+placedPotholes*3, throughput: Math.min(demand, beforeCapacity), access: 48 };
+    const base = { risk: 12.4 * demand / 800 * noise*weather.risk*(hasPothole?1.2:1)*hazardRisk, speed: observedSpeedMph(rng())*weather.speed*(hasPothole?.8:1)*hazardSpeed, delay: 24 + demand / 90 + Math.max(0,demand-beforeCapacity)*.04+(hasPothole?6:0)+placedPotholes*3, throughput: Math.min(demand, beforeCapacity), access: 48 };
     // AV effects disabled for now: + settings.av*1.2 capacity, - settings.av*.0015 risk.
     const capacity = Math.max(100, (980 - diet*90 - cross*16 - curb*10 + (settings.green-35)*3)*weather.capacity*afterClosureFactor);
     const riskFactor = Math.max(.18, 1 - cross*.11 - bike*.08 - curb*.09 - diet*.13);

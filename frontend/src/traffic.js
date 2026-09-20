@@ -1,3 +1,4 @@
+import {cruisingSpeed} from './driving-data.js';
 import { roadPoint } from './campus-geometry.js';
 import { INTERSECTIONS } from './intersections.js';
 import { WEATHER, DEFAULT_CONDITIONS } from './scenarios.js';
@@ -71,7 +72,7 @@ export function detourRoute(vehicle,routes,hazards){
 export function createTraffic(features,count=42,points=[]){
   const routes=campusRoutes(features);
   for(const route of routes)route.busStops=points.filter(p=>p.tags.highway==='bus_stop'&&(route.id.startsWith('forbes')?p.tags.name?.startsWith('Forbes'):route.id.startsWith('fifth')?p.tags.name?.startsWith('Fifth'):false)).map(p=>{const nearest=route.path.reduce((a,b)=>Math.hypot(a.x-p.point[0],a.z-p.point[1])<Math.hypot(b.x-p.point[0],b.z-p.point[1])?a:b);return{id:p.id,s:nearest.s,distance:Math.hypot(nearest.x-p.point[0],nearest.z-p.point[1])};}).filter(p=>p.distance<13);
-  const vehicles=Array.from({length:count},(_,i)=>{const route=routes[i%routes.length],rank=Math.floor(i/routes.length)+(i%routes.length===7?.5:0);const kind=i%13===3&&/^(forbes|fifth)/.test(route.id)?'bus':i%7===5?'bike':'car';return{kind,length:kind==='bus'?11.5:kind==='bike'?2:4.5,served:[],dwell:0,route,s:(12+rank*62)%route.length,speed:0,desired:kind==='bike'?4.3:kind==='bus'?7:7.8+(i*17%19)/10,enabled:true,braking:false,pose:poseAt(route,(12+rank*62)%route.length)};});
+  const vehicles=Array.from({length:count},(_,i)=>{const route=routes[i%routes.length],rank=Math.floor(i/routes.length)+(i%routes.length===7?.5:0);const kind=i%13===3&&/^(forbes|fifth)/.test(route.id)?'bus':i%7===5?'bike':'car';return{kind,length:kind==='bus'?11.5:kind==='bike'?2:4.5,served:[],dwell:0,route,s:(12+rank*62)%route.length,speed:0,desired:cruisingSpeed(kind,i),enabled:true,braking:false,pose:poseAt(route,(12+rank*62)%route.length)};});
   function update(dt,signals,upgrades=[],incident=null,pedestrians=[],conditions=DEFAULT_CONDITIONS){
     const weather=WEATHER[conditions.weather||'clear'];
     const minGap=2*weather.min_gap_scale,headway=1.35*weather.tau_scale,decel=3*weather.decel_scale;

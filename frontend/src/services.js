@@ -1,3 +1,4 @@
+import {DRIVING_DATA} from './driving-data.js';
 import {TOOLS, costOf} from './model.js';
 import {INTERSECTIONS} from './intersections.js';
 
@@ -9,6 +10,8 @@ export function sceneContext({items, settings, result, budget, gameMode}) {
     budget:{total:budget,spent,remaining:budget-spent},
     placements:items.map(item=>({...item,label:TOOLS.find(t=>t.id===item.type)?.name,cost:TOOLS.find(t=>t.id===item.type)?.cost})),
     results:result ? {...result,stale:false} : null,
+    traffic_observation:DRIVING_DATA,
+    result_presentation:gameMode?"Compare the challenge baseline and edited design":"Describe results.after as the current simulation result. Do not present a before/after comparison or game score.",
     warnings:[`${gameMode?'Challenge':'Free simulation'}; weather: ${settings.conditions?.weather||'clear'}; demand: ${settings.demand} vehicles/hour per intersection.`,
       'Traffic animation is illustrative. Campus metrics are uncalibrated local estimates, not measured crashes.'],
     weather:settings.conditions?.weatherObservation||{weather:settings.conditions?.weather||'clear',source:'Manual or challenge condition'},

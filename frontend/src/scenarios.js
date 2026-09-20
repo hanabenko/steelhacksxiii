@@ -10,7 +10,7 @@ export function makeScenario(rng=Math.random){
   const hazard={intersection:site.id,zone};
   const variants=[
     {title:'Rainy Oakland commute',description:'Wet roads slow traffic. Improve crossings and transit access under a limited budget.',weather:'rain'},
-    {title:'Thunderstorm at rush hour',description:'Poor visibility and reduced road capacity. Balance safer streets with long queues.',weather:'storm'},
+    {title:'Thunderstorm at rush hour',description:'Wet roads reduce braking performance and road capacity. Balance safer streets with long queues.',weather:'storm'},
     {title:'Campus construction',description:`${site.name}: the ${zone} approach is closed. Traffic takes available turns around the closure; make the remaining network safer.`,closure:hazard},
     {title:'Pothole season',description:`A large pothole on the ${zone} approach at ${site.name} slows traffic. Repair it ($8,000) or isolate the approach with barriers ($4,000).`,pothole:hazard},
   ];

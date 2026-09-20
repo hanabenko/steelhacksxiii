@@ -21,6 +21,21 @@ export function evaluateGame(items,settings){
  return run.outcome();
 }
 
+/** Compare against the actual challenge baseline, including its locked signals. */
+export function gameComparison(baseline,outcome){
+ const compare=(before,after)=>{
+  const reduction=before.after.risk.mean?100*(1-after.after.risk.mean/before.after.risk.mean):0;
+  const retained=before.after.throughput.mean?100*after.after.throughput.mean/before.after.throughput.mean:100;
+  return {...after,before:before.after,reduction,retained};
+ };
+ const saved=baseline.accidents-outcome.accidents;
+ const improvement=baseline.accidents?Math.round(saved/baseline.accidents*100):0;
+ const result=compare(baseline.result,outcome.result);
+ result.score=Math.max(0,Math.min(100,improvement));
+ result.intersections=outcome.result.intersections.map(site=>compare(baseline.result.intersections.find(b=>b.id===site.id),site));
+ return {result,saved,improvement,score:result.score};
+}
+
 export async function runGameTrialBatch(items, settings, {
  onProgress, wait = ms => new Promise(resolve => setTimeout(resolve, ms)),
 } = {}) {

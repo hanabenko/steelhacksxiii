@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {evaluateGame,runGameTrialBatch} from '../src/game-trials.js';
+import {evaluateGame,runGameTrialBatch,gameComparison} from '../src/game-trials.js';
 import {trialPreviewPlan} from '../src/trial-preview.js';
 import {DEFAULT_SETTINGS,TOOLS} from '../src/model.js';
 import {DEFAULT_CONDITIONS} from '../src/scenarios.js';
@@ -35,5 +35,16 @@ test('sampling presentation still calculates every round and preserves exact out
   assert.deepEqual(actual,evaluateGame([],config));assert.equal(actual.timeline.length,runs);
   assert.equal(updates.length,runs<150?runs:30);assert.equal(updates.at(-1).completed,runs);
   assert.ok(delays.reduce((sum,ms)=>sum+ms,0)<=3001);
+ }
+});
+
+test('game comparison uses its evaluated baseline at every locked signal duration',()=>{
+ for(const green of [25,35,45]){
+  const config={...settings,green},base=evaluateGame([],config);
+  const same=gameComparison(base,evaluateGame([],config));
+  assert.deepEqual(same.result.before,same.result.after);assert.equal(same.saved,0);assert.equal(same.result.reduction,0);
+  for(const site of same.result.intersections)assert.deepEqual(site.before,site.after);
+  const upgraded=gameComparison(base,evaluateGame([{type:'repair',...hazard}],config));
+  assert.deepEqual(upgraded.result.before,base.result.after);assert.ok(upgraded.result.after.risk.mean<upgraded.result.before.risk.mean);
  }
 });

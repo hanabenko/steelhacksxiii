@@ -36,7 +36,7 @@ export function recordPedestrianContact(person,before,after,vehicles) {
   if(person.injured)return null;
   const vehicle=vehicles.find(v=>pedestrianContact(before,after,v));
   if(!vehicle)return null;
-  person.injured=true;person.injuryTime=0;person.velocity=0;person.wait=0;
-  vehicle.crashWait=10;vehicle.speed=0;vehicle.braking=true;
+  person.injured=true;person.injuryTime=0;person.injuryAge=0;person.velocity=0;person.wait=0;
+  vehicle.crashWait=2;vehicle.speed=0;vehicle.braking=true;
   return vehicle;
 }

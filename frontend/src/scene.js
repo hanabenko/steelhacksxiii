@@ -213,7 +213,7 @@ export function createIntersection(container, onPlace, onEvent) {
   container.addEventListener('dragleave',()=>{hovered=null;refreshPreviews();});
   container.addEventListener('drop',e=>{e.preventDefault();hovered=null;refreshPreviews();const type=e.dataTransfer.getData('application/interlock');const zone=pick(e.clientX,e.clientY);if(type&&zone)onPlace(type,zone.split(":")[1],zone.split(":")[0]);else onEvent({type:'hint',message:'Drop directly onto a blue upgrade silhouette. Nothing was charged.'});});
   const replayLayer=createReplayLayer(scene,map);
-  function animate(now){frameId=requestAnimationFrame(animate);const realDt=Math.min((now-previous)/1000,.08);navigation.update(realDt);const dt=realDt*(paused?0:speed);previous=now;elapsed+=dt;
+  function animate(now){frameId=requestAnimationFrame(animate);const wallDt=Math.max(0,(now-previous)/1000),realDt=Math.min(wallDt,.08);navigation.update(realDt);const dt=realDt*(paused?0:speed);previous=now;elapsed+=dt;
     renderer.domElement.dataset.playbackSpeed=String(speed);
     renderer.domElement.dataset.simulationTime=elapsed.toFixed(2);
     const sky=environment.update(dt,realDt);renderer.domElement.dataset.timeOfDay=sky.hour.toFixed(2);renderer.domElement.dataset.weather=sky.weather;
@@ -225,7 +225,7 @@ export function createIntersection(container, onPlace, onEvent) {
     if(signalKey!==lastSignal){lastSignal=signalKey;onEvent({type:'signals',...signals,paused,site:viewedSite});}
     signalLamps.forEach(({lamp,axis,index})=>{const state=axis==='x'?signals.penn:signals.cross;const lit=index===({red:0,amber:1,green:2}[state]);const c=lit?[0xff493e,0xffbf35,0x45ed99][index]:0x172231;lamp.material.color.setHex(c);lamp.material.emissive.setHex(lit?c:0);lamp.scale.setScalar(lit?1.12:1);});
     if(!replayLayer.active){
-    renderer.domElement.dataset.incident=collision.update(dt,eventsVisible);
+    renderer.domElement.dataset.incident=collision.update(paused?0:realDt,eventsVisible,wallDt);
     const hurt=pedestrians.find(p=>p.injured),incident=collision.incident||(hurt?{x:hurt.g.position.x,z:hurt.g.position.z,radius:2}:null);
     const oldDistances=traffic.vehicles.map(v=>v.s);
     traffic.update(replayLayer.active?0:dt,signals,designItems,incident,pedestrians.map(p=>({x:p.g.position.x,z:p.g.position.z})),settings.conditions);
@@ -253,10 +253,11 @@ export function createIntersection(container, onPlace, onEvent) {
       const target=p.lookAngle??Math.PI/2,delta=Math.atan2(Math.sin(target-p.g.rotation.y),Math.cos(target-p.g.rotation.y));p.g.rotation.y+=delta*(1-Math.exp(-dt*5));
       p.legs.forEach((leg,j)=>{const target=Math.sin((p.walkPhase||0)+j*Math.PI)*Math.min(.35,Math.abs(p.velocity||0)*.35);leg.rotation.x+=(target-leg.rotation.x)*(1-Math.exp(-dt*12));});
       p.arms.forEach((arm,j)=>{const target=-Math.sin((p.walkPhase||0)+j*Math.PI)*Math.min(.25,Math.abs(p.velocity||0)*.25);arm.rotation.x+=(target-arm.rotation.x)*(1-Math.exp(-dt*12));});
-      if(p.p>75||p.injured&&p.injuryTime>14){p.p=-75;p.injured=false;p.injuryTime=0;p.velocity=0;p.wait=1.2;p.g.rotation.x=0;const entry=roadPoint(roadFeatures,'Forbes Avenue','x',p.p,p.side);p.g.position.set(entry.x,.28,entry.z);}
+      if(p.injured)p.injuryAge=(p.injuryAge||0)+wallDt;
+      if(p.p>75||p.injured&&p.injuryAge>=2){p.p=-75;p.injured=false;p.injuryTime=0;p.injuryAge=0;p.velocity=0;p.wait=1.2;p.g.rotation.x=0;const entry=roadPoint(roadFeatures,'Forbes Avenue','x',p.p,p.side);p.g.position.set(entry.x,.28,entry.z);}
       p.g.visible=pedestriansVisible;
     });
-    for(const entry of [...bloodMarks]){entry.age+=dt;entry.mark.visible=eventsVisible;entry.mark.children.forEach(spot=>spot.material.opacity=.8*Math.min(1,(14-entry.age)/3));if(entry.age>=14){disposeUpgrade(entry.mark);bloodMarks.splice(bloodMarks.indexOf(entry),1);}}
+    for(const entry of [...bloodMarks]){entry.age+=wallDt;entry.mark.visible=eventsVisible;entry.mark.children.forEach(spot=>spot.material.opacity=.8*Math.min(1,(2-entry.age)/.4));if(entry.age>=2){disposeUpgrade(entry.mark);bloodMarks.splice(bloodMarks.indexOf(entry),1);}}
     renderer.domElement.dataset.pedestrianAccidents=String(pedestrianAccidents);
     renderer.domElement.dataset.waitingPedestrians=String(pedestrians.filter(p=>p.waitingForTraffic).length);
     renderer.domElement.dataset.reactingCars=traffic.vehicles.filter(v=>v.enabled&&v.reacting).length;
@@ -288,7 +289,7 @@ export function createIntersection(container, onPlace, onEvent) {
     setHazardTool(type){hazardTool=type;hazardHover=null;clear(hazardPreviews);potholeGhost.visible=false;renderer.domElement.dataset.hazardTool=type||'';if(type)for(const block of ROAD_BLOCKS)hazardPreviews.add(roadFootprint(block));renderer.domElement.style.cursor=type?'crosshair':'grab';},
     startSimulation(){environment.start();},
     stopSimulation(){environment.stop();},
-    setReplay(value){replayLayer.set(value);renderer.domElement.dataset.trafficSource=value?'sumo-traci':'illustrative';onEvent({type:'replay',active:!!value});},
+    setReplay(value){collision.clear();replayLayer.set(value);renderer.domElement.dataset.trafficSource=value?'sumo-traci':'illustrative';onEvent({type:'replay',active:!!value});},
     jumpToIntersection(id,top=false){if(intersectionById(id))focusIntersection(top,id);},
     rotateView(degrees){
       const angle=degrees*Math.PI/180;
