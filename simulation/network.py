@@ -12,6 +12,8 @@ from datetime import UTC, datetime
 from pathlib import Path
 from urllib.request import Request, urlopen
 
+from sumolib.net import readNet
+
 REPO_ROOT = Path(__file__).resolve().parents[1]
 NETWORK_ROOT = REPO_ROOT / "simulation" / "networks"
 USER_AGENT = "Interlock/0.1 (SteelHacks XIII student project)"
@@ -40,6 +42,14 @@ class IntersectionNetwork:
     @property
     def metadata_path(self) -> Path:
         return self.directory / "network.json"
+
+
+@dataclass(frozen=True)
+class IntersectionPlan:
+    target_node_id: str
+    traffic_light_id: str | None
+    vehicle_routes: tuple[tuple[str, ...], ...]
+    pedestrian_routes: tuple[tuple[str, str], ...]
 
 
 NETWORKS = {
@@ -145,9 +155,13 @@ def build_network(spec: IntersectionNetwork, force: bool = False) -> Path:
         "--tls.default-type",
         "static",
         "--keep-edges.by-vclass",
-        "passenger",
+        "passenger,pedestrian",
         "--keep-edges.components",
         "1",
+        "--sidewalks.guess",
+        "true",
+        "--crossings.guess",
+        "true",
         "--output.street-names",
         "true",
     ]
@@ -163,3 +177,91 @@ def ensure_network(intersection_id: str, force: bool = False) -> IntersectionNet
         raise ValueError(f"Unsupported intersection '{intersection_id}'. Choose: {supported}") from None
     build_network(spec, force=force)
     return spec
+
+
+def target_network_plan(spec: IntersectionNetwork) -> IntersectionPlan:
+    net = readNet(str(spec.net_path), withInternal=True)
+    target_x, target_y = net.convertLonLat2XY(spec.longitude, spec.latitude)
+    nodes = [node for node in net.getNodes() if not node.getID().startswith(":")]
+    required_names = {name.casefold() for name in spec.street_names}
+    named_nodes = []
+    for node in nodes:
+        edge_names = {
+            edge.getName().casefold()
+            for edge in (*node.getIncoming(), *node.getOutgoing())
+            if not edge.isSpecial() and edge.getName()
+        }
+        if required_names.issubset(edge_names):
+            named_nodes.append(node)
+    target = min(
+        named_nodes or nodes,
+        key=lambda node: math.dist(node.getCoord(), (target_x, target_y)),
+    )
+    routes: list[tuple[str, ...]] = []
+    traffic_light_ids: set[str] = set()
+    for incoming in target.getIncoming():
+        if incoming.isSpecial() or not any(
+            lane.allows("passenger") for lane in incoming.getLanes()
+        ):
+            continue
+        for outgoing in target.getOutgoing():
+            if (
+                outgoing.isSpecial()
+                or not any(lane.allows("passenger") for lane in outgoing.getLanes())
+                or incoming.getFromNode() == outgoing.getToNode()
+            ):
+                continue
+            connections = incoming.getConnections(outgoing)
+            if connections:
+                routes.append((incoming.getID(), outgoing.getID()))
+                traffic_light_ids.update(
+                    connection.getTLSID()
+                    for connection in connections
+                    if connection.getTLSID()
+                )
+    if not routes:
+        raise RuntimeError(f"No drivable routes cross SUMO junction {target.getID()}")
+
+    adjacent_pedestrian_edges = {
+        edge.getID(): edge
+        for edge in (*target.getIncoming(), *target.getOutgoing())
+        if not edge.isSpecial()
+        and any(lane.allows("pedestrian") for lane in edge.getLanes())
+    }
+    routes_by_crossing: dict[str, tuple[float, tuple[str, str]]] = {}
+    for origin in adjacent_pedestrian_edges.values():
+        for destination in adjacent_pedestrian_edges.values():
+            if origin == destination:
+                continue
+            path, cost = net.getOptimalPath(
+                origin,
+                destination,
+                vClass="pedestrian",
+                withInternal=True,
+            )
+            if not path or cost is None:
+                continue
+            target_crossings = [
+                edge.getID()
+                for edge in path
+                if edge.getFunction() == "crossing" and target.getID() in edge.getID()
+            ]
+            for crossing in target_crossings:
+                candidate = (float(cost), (origin.getID(), destination.getID()))
+                if crossing not in routes_by_crossing or candidate < routes_by_crossing[crossing]:
+                    routes_by_crossing[crossing] = candidate
+
+    return IntersectionPlan(
+        target_node_id=target.getID(),
+        traffic_light_id=min(traffic_light_ids) if traffic_light_ids else None,
+        vehicle_routes=tuple(sorted(set(routes))),
+        pedestrian_routes=tuple(
+            sorted({route for _, route in routes_by_crossing.values()})
+        ),
+    )
+
+
+def target_node_and_routes(spec: IntersectionNetwork) -> tuple[str, list[list[str]]]:
+    """Backward-compatible vehicle route view used by earlier callers."""
+    plan = target_network_plan(spec)
+    return plan.target_node_id, [list(route) for route in plan.vehicle_routes]
