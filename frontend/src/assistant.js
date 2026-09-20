@@ -3,12 +3,18 @@ export function installAssistant({services,getContext,getRevision}) {
   const root=document.createElement('details');root.className='assistant';
   root.innerHTML=`<summary aria-label="Ask Interlock"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><rect x="9" y="2" width="6" height="12" rx="3"/><path d="M5 10v2a7 7 0 0 0 14 0v-2M12 19v3M8 22h8"/></svg><span>Ask Interlock</span></summary><div class="assistant-content"><div class="assistant-heading"><strong>Interlock assistant</strong><small>DigitalOcean voice · Gemini analysis</small></div><p>Ask about the active model, infrastructure, assumptions, or results.</p><form><label for="assistant-question">Your question</label><input id="assistant-question" maxlength="1000" required placeholder="What changed in this scenario?"><button type="submit">Ask</button></form><div class="assistant-actions"><button type="button" data-mic>Record question</button><button type="button" data-coach>Design advice</button><label><input type="checkbox" data-speak> Speak replies</label></div><p data-answer role="status" aria-live="polite">Answers use the current scene and simulation results.</p><small data-source></small><audio controls hidden></audio></div>`;
   document.body.append(root);
+  const closeButton=document.createElement('button');
+  closeButton.type='button';closeButton.className='assistant-close';
+  closeButton.setAttribute('aria-label','Close Interlock assistant');
+  closeButton.textContent='×';
+  closeButton.onclick=()=>{root.open=false;root.querySelector('summary').focus();};
+  root.querySelector('.assistant-heading').append(closeButton);
   root.addEventListener('keydown',event=>{if(event.key==='Escape'&&root.open){event.preventDefault();event.stopPropagation();root.open=false;root.querySelector('summary').focus();}});
   const answer=root.querySelector('[data-answer]'),source=root.querySelector('[data-source]'),audio=root.querySelector('audio'),input=root.querySelector('#assistant-question'),mic=root.querySelector('[data-mic]');
   let busy=false,recorder,stream,chunks=[],audioUrl,timer,epoch=0;
   function clearAudio(){audio.pause();audio.hidden=true;audio.removeAttribute('src');if(audioUrl)URL.revokeObjectURL(audioUrl);audioUrl=null;}
   async function play(blob){clearAudio();audioUrl=URL.createObjectURL(blob);audio.src=audioUrl;audio.hidden=false;try{await audio.play();}catch{source.textContent+=' Press play to hear the reply.';}}
-  function lock(value){busy=value;root.querySelectorAll('button').forEach(b=>b.disabled=value);}
+  function lock(value){busy=value;root.querySelectorAll('button:not(.assistant-close)').forEach(b=>b.disabled=value);}
   async function perform(action){if(busy)return;lock(true);clearAudio();const revision=getRevision(),token=++epoch;answer.textContent='Thinking…';source.textContent='';try{const response=await action();if(revision!==getRevision()||token!==epoch){answer.textContent='The scene changed. Ask again for the current design.';return;}answer.textContent=response.text;source.textContent=response.source||'';if(response.audio)await play(response.audio);else if(root.querySelector('[data-speak]').checked){try{const blob=await services.speak(response.text);if(revision===getRevision()&&token===epoch)await play(blob);}catch(error){source.textContent+=' Text available; speech unavailable. '+error.message;}}}catch(error){answer.textContent=error.message;}finally{lock(false);}}
   async function ask(){const question=input.value.trim();if(!question)return;await perform(async()=>{const response=await services.ask(question,getContext(),false);return {text:response.text,source:'Scene-grounded answer'+(response.missing?.length?' · Missing: '+response.missing.join(', '):'')};});}
   root.querySelector('form').onsubmit=e=>{e.preventDefault();ask();};

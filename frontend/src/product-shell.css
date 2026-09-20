@@ -144,3 +144,49 @@ input::placeholder { color:#536780; opacity:1; }
   .challenge-context { grid-template-columns:1fr 1fr; }
   .scene-legend { max-width:calc(100vw - 24px); }
 }
+
+/* Keep campus navigation directly below the camera toolbar. */
+body { --camera-top:154px; --camera-height:170px; --camera-right:25px; }
+.map-controls {
+  top:var(--camera-top);
+  right:var(--camera-right);
+  height:var(--camera-height);
+  display:flex;
+  flex-direction:column;
+  justify-content:space-between;
+}
+.navigation-panel {
+  top:calc(var(--camera-top) + var(--camera-height) + 12px)!important;
+  right:var(--camera-right)!important;
+  max-height:calc(100dvh - var(--camera-top) - var(--camera-height) - 90px);
+  background:#fff;
+}
+.header .brand { color:#233b59; flex-shrink:0; }
+.header .brand-mark { background:#285687; color:#fff; }
+.header .brand-dot { color:#a63122; }
+.header-secondary #settings-button {
+  background:#233b59;
+  color:#fff;
+  border:1px solid #233b59;
+  min-height:36px;
+}
+.header-secondary #settings-button:hover { background:#315781; }
+@media(max-width:760px) {
+  body { --camera-top:196px; --camera-right:13px; }
+  .navigation-panel[open] { right:var(--camera-right)!important; }
+  .header-secondary #settings-button { display:inline-flex; font-size:0; padding:8px; gap:0; }
+  .header .brand-mark { display:grid; }
+}
+@media(max-width:430px) {
+  .header .brand { font-size:0; gap:0; }
+  .header .brand-dot { display:none; }
+  .header-secondary #guide-button { display:none; }
+}
+
+.assistant-heading { position:relative; padding-right:44px; }
+.assistant-content .assistant-close {
+  position:absolute; right:0; top:8px; width:36px; height:36px;
+  padding:0; border:1px solid #bccbde; border-radius:8px;
+  background:#edf3fa; color:#233b59; font-size:26px; line-height:1;
+}
+.assistant-content .assistant-close:hover { background:#dce7f4; }

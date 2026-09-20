@@ -69,14 +69,16 @@ test('SUMO study sends supported inputs and renders physical results and replay'
 
 for(const width of [1440,390,320])test(`toolbar assistant is reachable at ${width}px and closes with Escape`,async({page})=>{
  await page.setViewportSize({width,height:844});await page.goto('/');
- const launcher=page.locator('.header .assistant summary');
- await expect(launcher).toContainText('Street assistant');await expect(launcher.locator('svg')).toBeVisible();
- const header=await page.locator('.header').boundingBox(),button=await launcher.boundingBox();
- expect(button.x).toBeGreaterThanOrEqual(header.x);expect(button.x+button.width).toBeLessThanOrEqual(header.x+header.width);
- const guide=await page.locator('#guide-button').boundingBox();expect(guide.x+guide.width).toBeLessThanOrEqual(header.x+header.width);
+ const launcher=page.locator('.assistant summary');
+ await expect(launcher).toContainText('Ask Interlock');await expect(launcher.locator('svg')).toBeVisible();
+ const button=await launcher.boundingBox();
+ expect(button.x).toBeGreaterThanOrEqual(0);expect(button.x+button.width).toBeLessThanOrEqual(width);
  await launcher.click();await expect(page.locator('#assistant-question')).toBeVisible();
  const panel=await page.locator('.assistant-content').boundingBox();
  expect(panel.x).toBeGreaterThanOrEqual(0);expect(panel.x+panel.width).toBeLessThanOrEqual(width);
+ await page.getByRole('button',{name:'Close Interlock assistant',exact:true}).click();
+ await expect(page.locator('#assistant-question')).not.toBeVisible();await expect(launcher).toBeFocused();
+ await launcher.click();
  await page.locator('#assistant-question').focus();await page.keyboard.press('Escape');
  await expect(page.locator('#assistant-question')).not.toBeVisible();await expect(launcher).toBeFocused();
  expect(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth)).toBe(true);
