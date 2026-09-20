@@ -1,3 +1,4 @@
+import { roadAnchor, sampleAnchor } from './road-layout.js';
 import { DEFAULT_INTERSECTION, intersectionById } from './intersections.js';
 import { roadPoint } from './campus-geometry.js';
 import map from './data/intersection.json' with { type: 'json' };
@@ -9,23 +10,8 @@ export const APPROACHES = ['north', 'east', 'south', 'west'];
 // Preview, picking, and construction all use the same geometry and transform.
 export function placementFor(type, zone, intersection = DEFAULT_INTERSECTION) {
   if (!APPROACHES.includes(zone)) throw new Error('Unknown approach');
-  const horizontal = zone === 'east' || zone === 'west';
-  const sign = zone === 'east' || zone === 'south' ? 1 : -1;
-  const along = distance => horizontal ? [sign * distance, 0] : [0, sign * distance];
-  let center;
-  if (type === 'crosswalk') center = along(12);
-  else if (type === 'bike' || type === 'diet') {
-    center = along(34);
-    center[horizontal ? 1 : 0] = type === 'bike' ? 5.2 : -2.2;
-  } else if (type === 'curb') {
-    center = { north: [7, -12], east: [12, 7], south: [-7, 12], west: [-12, -7] }[zone];
-  } else if (type === 'signal') {
-    center = { north: [9, -8], east: [8, 9], south: [-9, 8], west: [-8, -9] }[zone];
-  } else throw new Error('Unknown upgrade');
-  const site=intersectionById(intersection);if(!site)throw new Error('Unknown intersection');
-  let x=center[0]+site.origin[0],z=center[1]+site.origin[1],rotation=horizontal?0:Math.PI/2;
-  if(site.id!==DEFAULT_INTERSECTION){const road=roadPoint(map.features,horizontal?site.primaryRoad:site.crossRoad,horizontal?'x':'z',horizontal?x:z);if(road){if(horizontal)z=road.z+center[1];else x=road.x+center[0];rotation=road.angle+(horizontal?-Math.PI/2:Math.PI/2);}}
-  return {x,z,rotation,axis:horizontal?'x':'z'};
+  if (!intersectionById(intersection)) throw new Error('Unknown intersection');
+  return roadAnchor(type,zone,intersection);
 }
 
 export function createUpgrade(type, zone, { preview = false, intersection = DEFAULT_INTERSECTION } = {}) {
@@ -49,12 +35,17 @@ export function createUpgrade(type, zone, { preview = false, intersection = DEFA
     if (preview) object.renderOrder = 3;
     group.add(object); return object;
   }
-  const box = (w,h,d,x,y,z,color) => mesh(new THREE.BoxGeometry(w,h,d),color,x,y,z);
+  const box = (w,h,d,x,y,z,color) => mesh(new THREE.BoxGeometry(w,h,d,['bike','diet'].includes(type)?Math.max(1,Math.ceil(w/2)):1),color,x,y,z);
   if (type === 'crosswalk') {
-    const site=intersectionById(intersection),horizontal=zone==='east'||zone==='west';
-    const span=horizontal?(site.primaryRoad==='Fifth Avenue'?15:13):(site.crossRoad==='South Bouquet Street'?7:13);
+    const span=anchor.width+1;
     box(3.5,.25,span,0,.24,0,'#e4d9bd');
     for(let z=-span/2+1;z<span/2-.4;z+=1.4) box(3,.06,.8,0,.39,z,'#fff6de');
+  }
+  if (type === 'shelter') {
+    box(5,.15,2,0,.25,0,'#d1d8df');box(5,.2,2.3,0,3,0,'#335477');
+    for(const x of [-2.2,2.2])box(.12,2.8,.12,x,1.6,.8,'#547086');
+    box(4.6,1.8,.08,0,1.7,.85,'#aac8d6');box(3,.12,.6,0,.9,.3,'#d5aa69');
+    for(const x of [-1,1])box(.12,.7,.4,x,.52,.3,'#344559');
   }
   if (type === 'bike') {
     box(36,.09,2.3,0,.32,0,'#4fbaa4');
@@ -88,6 +79,16 @@ export function createUpgrade(type, zone, { preview = false, intersection = DEFA
     }
   }
   if (!preview && type === 'signal') materials.get('#172231').dispose();
+  // Deform long upgrades onto the same curved centerline used by the roadway.
+  if(['bike','diet'].includes(type))for(const child of group.children){
+    const vertices=child.geometry.attributes.position,c=Math.cos(anchor.rotation),s=Math.sin(anchor.rotation);
+    for(let i=0;i<vertices.count;i++){
+      const point=sampleAnchor(anchor,vertices.getX(i)+child.position.x,vertices.getZ(i)+child.position.z);if(!point)continue;
+      const dx=point.x-anchor.x,dz=point.z-anchor.z;
+      vertices.setX(i,c*dx-s*dz-child.position.x);vertices.setZ(i,s*dx+c*dz-child.position.z);
+    }
+    vertices.needsUpdate=true;child.geometry.computeVertexNormals();child.geometry.computeBoundingSphere();
+  }
   group.updateMatrixWorld(true);
   return group;
 }

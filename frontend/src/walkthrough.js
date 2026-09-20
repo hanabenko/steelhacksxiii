@@ -21,6 +21,7 @@ export function createWalkthrough({openPanel,getState}) {
   }
   function show(index){
     clearHighlight();step=index;const data=steps[step];openPanel(data.panel);
+    if(data.panel==='design')document.querySelector('.keyboard-placement').open=true;
     card.hidden=false;document.body.classList.add('tour-active');card.dataset.step=String(step);
     $('#tour-progress').textContent=`QUICK START · ${step+1} OF ${steps.length}`;
     $('#tour-title').textContent=data.title;$('#tour-body').textContent=data.body;

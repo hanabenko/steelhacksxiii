@@ -1,3 +1,6 @@
+import map from '../src/data/intersection.json' with {type:'json'};
+import { roadPoint } from '../src/campus-geometry.js';
+import { INTERSECTIONS } from '../src/intersections.js';
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import * as THREE from 'three';
@@ -24,7 +27,8 @@ test('crosswalk picking hits the crossing itself and rejects the old offset targ
   assert.ok(ray.intersectObject(preview,true).length>0);
   ray.set(new THREE.Vector3(23,100,0),new THREE.Vector3(0,-1,0));
   assert.equal(ray.intersectObject(preview,true).length,0);
-  assert.deepEqual(placementFor('crosswalk','north'),{x:0,z:-12,rotation:Math.PI/2,axis:'z'});
+  const anchor=placementFor('crosswalk','north'),road=roadPoint(map.features,'Bigelow Boulevard','z',-12);
+  assert.equal(anchor.x,road.x);assert.equal(anchor.z,road.z);assert.equal(anchor.rotation,road.angle-Math.PI/2);
   disposeUpgrade(preview);
 });
 test('each infrastructure type is pickable on its own visible footprint',()=>{
@@ -34,4 +38,15 @@ test('each infrastructure type is pickable on its own visible footprint',()=>{
     assert.ok(ray.intersectObject(preview,true).length>0,`${tool.id} ${zone}`);
     disposeUpgrade(preview);
   }
+});
+
+
+test('crossings are perpendicular to each mapped approach and reach both sidewalks',()=>{
+ for(const site of INTERSECTIONS)for(const zone of APPROACHES){
+  const anchor=placementFor('crosswalk',zone,site.id),mesh=createUpgrade('crosswalk',zone,{intersection:site.id});
+  const direction=new THREE.Vector3(0,0,1).applyEuler(mesh.rotation);
+  const tangent=new THREE.Vector3(Math.sin(anchor.angle),0,Math.cos(anchor.angle));assert.ok(Math.abs(direction.dot(tangent))<1e-10);
+  assert.ok(mesh.children[0].geometry.parameters.depth>anchor.width);
+  const center=roadPoint(map.features,anchor.name,anchor.axis,anchor.coordinate);assert.ok(Math.hypot(anchor.x-center.x,anchor.z-center.z)<1e-6);disposeUpgrade(mesh);
+ }
 });

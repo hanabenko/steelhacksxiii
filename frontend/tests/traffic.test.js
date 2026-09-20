@@ -27,3 +27,28 @@ test('traffic is frozen by zero dt and timestep subdivision is reproducible',()=
 test('scripted collision progresses through impact and fire, pauses, hides and clears',()=>{
  const scene=new THREE.Scene(),preview=createCollisionPreview(scene,[new THREE.Group(),new THREE.Group()]);preview.start();assert.equal(preview.update(0),'approach');assert.equal(preview.update(1.3),'impact');assert.equal(preview.update(0),'impact');assert.equal(preview.update(2),'fire');preview.update(0,false);assert.equal(scene.children[0].visible,false);assert.equal(preview.update(10),'idle');assert.equal(scene.children[0].visible,false);
 });
+
+import { updatePedestrianReaction } from '../src/pedestrian-reactions.js';
+test('an incident stops an approaching queue on green, leaves distant traffic alone, and clears',()=>{
+ const traffic=createTraffic(map.features,3),[lead,following,distant]=traffic.vehicles;
+ following.route=lead.route;
+ lead.s=lead.route.path.find(p=>p.x>=-40).s;following.s=lead.s-22;lead.speed=7;following.speed=7;
+ const incident={x:0,z:0,radius:8,age:1};const distantStart=distant.s;
+ for(let i=0;i<600;i++){
+  const speed=lead.speed;traffic.update(1/60,green,[],incident);
+  assert.ok(lead.pose.x< -10);assert.ok(lead.s-following.s>=5.9);assert.ok(Math.abs(speed-lead.speed)<=7/60+.00001);
+ }
+ assert.equal(lead.reacting,true);assert.ok(lead.speed<.2);assert.ok(distant.s>distantStart+20);assert.equal(distant.reacting,false);
+ const stopped=lead.s;for(let i=0;i<300;i++)traffic.update(1/60,green);assert.ok(lead.s>stopped+8);assert.equal(lead.reacting,false);
+});
+test('pedestrians retreat on the sidewalk, wait, respect pause, and resume after clearance',()=>{
+ const person={p:-4},incident={x:0,z:0,radius:8};
+ for(let i=0;i<240;i++)updatePedestrianReaction(person,0,1/60,{x:person.p,z:9},incident);
+ assert.ok(person.p< -8);assert.equal(person.reacting,true);assert.ok(person.velocity<0);
+ const frozen=JSON.stringify(person);updatePedestrianReaction(person,0,0,{x:person.p,z:9},incident);assert.equal(JSON.stringify(person),frozen);
+ for(let i=0;i<1200;i++)updatePedestrianReaction(person,0,1/60,{x:person.p,z:9},incident);
+ assert.ok(Math.abs(person.velocity)<.01);const waiting=person.p;
+ for(let i=0;i<360;i++)updatePedestrianReaction(person,0,1/60,{x:person.p,z:9},null);
+ assert.ok(person.p>waiting+1);assert.equal(person.reacting,false);
+ const far={p:-70};updatePedestrianReaction(far,1,1,{x:-70,z:9},incident);assert.equal(far.reacting,false);assert.ok(far.p> -70);
+});

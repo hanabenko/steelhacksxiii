@@ -4,6 +4,7 @@ const page=await browser.newPage({viewport:{width:1440,height:1050}});const erro
 await page.goto('http://127.0.0.1:5173');await page.locator('#collision-demo').click();
 await page.waitForFunction(()=>document.querySelector('#scene canvas')?.dataset.incident==='fire');await page.locator('#pause').click();
 await page.screenshot({path:'artifacts/collision-preview.png'});
-await page.locator('#campus-view').click();await page.locator('[data-quick-tool="crosswalk"]').click();await page.screenshot({path:'artifacts/all-sites-placement.png'});
+await page.reload();await page.locator('button[data-panel="design"]').click();await page.locator('[data-quick-tool="crosswalk"]').click();await page.screenshot({path:'artifacts/all-sites-placement.png'});
 await page.locator('button[data-panel="design"]').click();await page.locator('[data-intersection="pitt-fifth-bigelow"][data-zone="north"]').scrollIntoViewIfNeeded();await page.screenshot({path:'artifacts/three-site-design.png'});
+await page.setViewportSize({width:390,height:844});await page.reload();await page.screenshot({path:'artifacts/mobile-navigation.png'});
 console.log(JSON.stringify({errors}));await browser.close();

@@ -1,0 +1,13 @@
+{
+  "area": "Oakland, Pittsburgh, Pennsylvania",
+  "reviewed": "2026-09-19",
+  "currency": "USD",
+  "status": "planning-estimates-not-bid-prices",
+  "note": "Oakland sources publish project totals and qualitative cost bands, not installed unit prices for these five upgrades. Game amounts below remain explicit planning allowances; they are not quoted Oakland construction prices.",
+  "sources": [
+    {"title":"Oakland Plan: Traffic Calming Corridors","url":"https://engage.pittsburghpa.gov/oakland/strategy-traffic-calming-corridors","publisher":"City of Pittsburgh","costBand":"$–$$ of $$$$; depends on design"},
+    {"title":"Oakland Plan: Bus Stop Enhancements","url":"https://engage.pittsburghpa.gov/oakland/strategy-bus-stop-enhancements","publisher":"City of Pittsburgh","costBand":"$$ of $$$$; varies by stop"},
+    {"title":"Terrace / DeSoto safety improvements, September 2025","url":"https://www.unionprogress.com/2025/09/28/city-uses-paint-flex-posts-to-improve-pedestrian-safety-on-upper-university-of-pittsburgh-campus/","publisher":"Pittsburgh Union Progress","reportedProjectTotal":110000,"scope":"Multi-block paint, posts, crossing and bicycle improvements. No unit-cost breakdown; not comparable to one individual upgrade."}
+  ],
+  "allowances": {"crosswalk":12000,"bike":24000,"curb":18000,"shelter":16000,"diet":28000}
+}

@@ -3,3 +3,7 @@
 .network-run-note{font-size:12px;line-height:1.6;color:#637d9c;background:#eef3fc;border-radius:8px;padding:10px;margin:0 0 16px}
 
 .approaches fieldset{border:1px solid #b5c9e4;border-radius:8px;margin:10px 0;padding:8px}.approaches legend{font-weight:700;font-size:14px}.navigation-panel #collision-demo{width:100%;margin:8px 0;background:#fff0cf;color:#71340c;font-weight:700;padding:8px;border:1px solid #e9b650;border-radius:8px}
+
+/* Navigation replaces the former landmark shortcuts; keep the map clear around open panels. */
+.navigation-panel{left:25px;right:auto;top:190px}body[data-panel]:not([data-panel=""]) .navigation-panel{display:none}#network-design-status{font-size:13px;font-weight:700;color:#365782;line-height:1.5}
+@media(max-width:760px){.navigation-panel{left:13px;right:auto;top:155px}.navigation-panel[open]{right:13px;width:auto}}

@@ -1,5 +1,6 @@
+async function buildTool(page,type){const design=page.locator('button[data-panel="design"]');if(await design.getAttribute('aria-expanded')!=='true')await design.click();return page.locator('[data-quick-tool="'+type+'"]');}
 import { test, expect } from '@playwright/test';
-async function openPanel(page,name){const button=page.locator('button[data-panel="'+name+'"]');if(await button.getAttribute('aria-expanded')!=='true')await button.click();}
+async function openPanel(page,name){const button=page.locator('button[data-panel="'+name+'"]');if(await button.getAttribute('aria-expanded')!=='true')await button.click();if(name==='design'&&!await page.locator('.keyboard-placement').evaluate(el=>el.open))await page.locator('.keyboard-placement>summary').click();}
 
 test('renders real geometry with an operational WebGL canvas',async({page})=>{
   const errors=[];page.on('pageerror',e=>errors.push(e.message));
@@ -163,12 +164,12 @@ test('mobile walkthrough can be completed without covering required controls',as
 test('quick tray targets the crosswalk itself and launches a comparison',async({page})=>{
   await page.goto('/');await page.locator('#view-top').click();
   const canvas=page.locator('#scene canvas');const b=await canvas.boundingBox();
-  const card=page.locator('[data-quick-tool="crosswalk"]');
+  const card=await buildTool(page,'crosswalk');
   await card.dragTo(canvas,{targetPosition:{x:b.width/2+b.height*23/200,y:b.height/2}});
   await expect(page.locator('#budget-hud')).toHaveText('$100,000');
   await card.dragTo(canvas,{targetPosition:{x:b.width/2+b.height*12/200,y:b.height/2}});
   await expect(page.locator('#budget-hud')).toHaveText('$88,000');
-  await expect(page.locator('#design-panel')).not.toBeVisible();
+  await expect(page.locator('#design-panel')).toBeVisible();
   await page.locator('#quick-run').click();
   await expect(page.locator('#result-status')).toHaveText('100 RUNS');
   await expect(page.locator('#after-risk')).not.toHaveText('—');
@@ -176,7 +177,7 @@ test('quick tray targets the crosswalk itself and launches a comparison',async({
 
 test('quick selection supports number keys, cancellation, and mobile controls',async({page})=>{
   await page.setViewportSize({width:390,height:844});await page.goto('/');
-  await page.locator('[data-quick-tool="bike"]').click();
+  await (await buildTool(page,'bike')).click();
   await expect(page.locator('[data-quick-tool="bike"]')).toHaveAttribute('aria-pressed','true');
   await page.keyboard.press('Escape');await expect(page.locator('#placement-hint')).not.toBeVisible();
   await page.keyboard.press('1');await expect(page.locator('[data-quick-tool="crosswalk"]')).toHaveAttribute('aria-pressed','true');
@@ -190,7 +191,7 @@ test('observation mode hides every overlay and keeps orbit/zoom and restoration 
   await openPanel(page,'design');await page.locator('[data-tool="crosswalk"]').click();
   await page.getByRole('button',{name:'Hide interface',exact:true}).click();
   await expect(page.locator('#scene canvas')).toBeVisible();
-  for(const selector of ['.header','.action-dock','.upgrade-bar','.quick-simulation','.panel','.map-controls','.signal-hud','.campus-jumps','.landmark-labels','#placement-hint']){
+  for(const selector of ['.header','.action-dock','.upgrade-bar','.quick-simulation','.panel','.map-controls','.signal-hud','.navigation-panel','.landmark-labels','#placement-hint']){
     for(const element of await page.locator(selector).all())await expect(element).not.toBeVisible();
   }
   const before=(await page.locator('#scene canvas').screenshot()).toString('base64');
@@ -201,14 +202,13 @@ test('observation mode hides every overlay and keeps orbit/zoom and restoration 
   await expect(page.locator('#placement-hint')).not.toBeVisible();
 });
 
-test('campus landmarks are anchored and reachable from the quick map navigation',async({page})=>{
-  const errors=[];page.on('pageerror',e=>errors.push(e.message));await page.goto('/');
-  for(const [id,name] of [['cathedral','Cathedral of Learning'],['towers','Litchfield Towers'],['jefes','El Jefe’s Taqueria']]){
-    await page.locator('[data-focus="'+id+'"]').click();await expect(page.locator('[data-landmark="'+id+'"]').filter({hasText:name})).toBeVisible();
-  }
-  await page.locator('#campus-view').click();await expect(page.locator('[data-landmark="cathedral"]')).toBeVisible();
-  await page.setViewportSize({width:390,height:844});await page.getByRole('button',{name:'Hide interface',exact:true}).click();await page.getByRole('button',{name:'Show interface',exact:true}).click();
-  expect(errors).toEqual([]);
+test('landmarks remain on the map while navigation replaces the removed overlays',async({page})=>{
+ const errors=[];page.on('pageerror',e=>errors.push(e.message));await page.goto('/');
+ await expect(page.locator('.campus-jumps,.preview-badge,[data-focus]')).toHaveCount(0);
+ for(const id of ['cathedral','towers','jefes'])await expect(page.locator('[data-landmark="'+id+'"]')).toBeVisible();
+ const navigation=await page.locator('.navigation-panel').boundingBox();expect(navigation.x).toBe(25);expect(navigation.y).toBe(190);
+ await page.setViewportSize({width:390,height:844});await page.reload();const mobile=await page.locator('.navigation-panel').boundingBox();expect(mobile.x).toBe(13);expect(mobile.y).toBe(155);
+ await page.locator('#observe-toggle').click();await expect(page.locator('.navigation-panel')).not.toBeVisible();await page.locator('#observe-toggle').click();await expect(page.locator('.navigation-panel')).toBeVisible();expect(errors).toEqual([]);
 });
 
 test('corner observation toggle dismisses native dialogs and walkthroughs',async({page})=>{
@@ -250,7 +250,7 @@ test('street navigation moves while traffic is paused and while interface is hid
  await page.locator('#observe-toggle').click();const riseBefore=(await position()).split(',').map(Number)[1];await page.getByRole('button',{name:'Rise',exact:true}).focus();await page.keyboard.press('Enter');await expect.poll(async()=>Number((await position()).split(',')[1])).toBeGreaterThan(riseBefore);
  await page.locator('button[data-navigation="pan"]').click();await expect(canvas).toHaveAttribute('data-navigation','pan');
  const panBefore=await position();await page.mouse.move(680,450);await page.mouse.down();await page.mouse.move(830,500,{steps:8});await page.mouse.up();await expect.poll(position).not.toBe(panBefore);
- await page.locator('#campus-view').click();await expect(canvas).toHaveAttribute('data-navigation','pan');
+ await page.locator('#recenter').click();await expect(canvas).toHaveAttribute('data-navigation','pan');
 });
 
 test('mobile free navigation and on-screen movement remain reachable',async({page})=>{
