@@ -1,4 +1,5 @@
 import {simulateNetwork,random} from './model.js';
+import {trialPreviewPlan} from './trial-preview.js';
 // One paired exposure per site per trial; probabilities are explicit game assumptions.
 export function createGameTrialRun(items,settings){
  const result=simulateNetwork(items,settings,42),rng=random(1042),timeline=[];
@@ -17,5 +18,20 @@ export function createGameTrialRun(items,settings){
 export function evaluateGame(items,settings){
  const run=createGameTrialRun(items,settings);
  while(run.step()){};
+ return run.outcome();
+}
+
+export async function runGameTrialBatch(items, settings, {
+ onProgress, wait = ms => new Promise(resolve => setTimeout(resolve, ms)),
+} = {}) {
+ const run=createGameTrialRun(items,settings),plan=trialPreviewPlan(settings.runs);
+ let progress,illustrated=0;
+ while((progress=run.step())){
+  if(onProgress && progress.completed===plan.checkpoints[illustrated]){
+   illustrated++;
+   onProgress({...progress,illustrated,previewCount:plan.count,sampled:plan.sampled});
+   await wait(plan.delayMs);
+  }
+ }
  return run.outcome();
 }

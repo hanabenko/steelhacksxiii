@@ -1,0 +1,3 @@
+-r gemini/requirements.txt
+-r voice/requirements.txt
+# Install the root pyproject dependencies as well for SUMO and database support.

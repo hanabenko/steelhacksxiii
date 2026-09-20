@@ -12,6 +12,7 @@ from __future__ import annotations
 import base64
 from contextlib import asynccontextmanager
 from pathlib import Path
+import httpx
 
 from fastapi import Body, FastAPI, File, Form, HTTPException, Response, UploadFile
 from fastapi.middleware.cors import CORSMiddleware
@@ -146,7 +147,7 @@ async def ask(request: AskRequest = Body(...)) -> AskResponse:
                 audio = await app.state.eleven.text_to_speech(result.text, request.voice_id)
                 audio_base64 = base64.b64encode(audio).decode("ascii")
                 content_type = _audio_content_type()
-            except ElevenLabsError as exc:
+            except (ElevenLabsError, httpx.HTTPError) as exc:
                 audio_error = str(exc)
 
     return AskResponse(
@@ -174,8 +175,8 @@ async def speak(request: SpeakRequest = Body(...)) -> Response:
     text = speakable(request.text) if request.normalize else request.text
     try:
         audio = await app.state.eleven.text_to_speech(text, request.voice_id)
-    except ElevenLabsError as exc:
-        raise HTTPException(status_code=exc.status_code or 502, detail=str(exc)) from exc
+    except (ElevenLabsError, httpx.HTTPError) as exc:
+        raise HTTPException(status_code=getattr(exc, 'status_code', None) or 502, detail=str(exc)) from exc
     return Response(content=audio, media_type=_audio_content_type())
 
 
@@ -189,8 +190,8 @@ async def transcribe(file: UploadFile = File(...)) -> dict[str, str]:
         text = await app.state.eleven.speech_to_text(
             audio, file.filename or "question.webm", file.content_type or "audio/webm"
         )
-    except ElevenLabsError as exc:
-        raise HTTPException(status_code=exc.status_code or 502, detail=str(exc)) from exc
+    except (ElevenLabsError, httpx.HTTPError) as exc:
+        raise HTTPException(status_code=getattr(exc, 'status_code', None) or 502, detail=str(exc)) from exc
     return {"text": text}
 
 
@@ -216,5 +217,5 @@ async def voices() -> dict[str, object]:
         raise HTTPException(status_code=503, detail="ELEVENLABS_API_KEY is not configured.")
     try:
         return {"voices": await app.state.eleven.list_voices()}
-    except ElevenLabsError as exc:
-        raise HTTPException(status_code=exc.status_code or 502, detail=str(exc)) from exc
+    except (ElevenLabsError, httpx.HTTPError) as exc:
+        raise HTTPException(status_code=getattr(exc, 'status_code', None) or 502, detail=str(exc)) from exc

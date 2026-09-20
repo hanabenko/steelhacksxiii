@@ -31,6 +31,7 @@ test('weather slows traffic and construction barriers divert approaching vehicle
 test('day/night clock starts on run, follows simulation time, pauses, and can be disabled',()=>{
  const scene=new THREE.Scene();scene.background=new THREE.Color();const sun=new THREE.DirectionalLight(),ambient=new THREE.HemisphereLight();const env=createEnvironment(scene,sun,ambient);
  env.setConditions({...DEFAULT_CONDITIONS,hour:23});assert.equal(env.update(30).hour,23);env.start();assert.equal(env.update(60).hour,1);assert.equal(env.update(0).hour,1);
+ env.stop();assert.equal(env.update(600).hour,23);env.start();assert.equal(env.update(30).hour,0);
  env.setConditions({...DEFAULT_CONDITIONS,hour:12,dayNight:false});assert.equal(env.update(600).hour,12);env.dispose();
 });
 

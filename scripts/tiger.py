@@ -96,7 +96,9 @@ def load_catalog(data_root: Path) -> tuple[dict[str, Any], dict[str, str]]:
 def selected_intersections(data_root: Path) -> list[dict[str, Any]]:
     with (REPO_ROOT / "config" / "intersections.json").open(encoding="utf-8") as handle:
         selection = json.load(handle)["intersections"]
-    candidates = gpd.read_parquet(data_root / "derived" / "intersection_candidates.parquet")
+    parquet = data_root / "derived" / "intersection_candidates.parquet"
+    candidates = (gpd.read_parquet(parquet) if parquet.exists() else
+                  gpd.read_file(data_root / "derived" / "intersection_candidates.geojson"))
     by_id = candidates.set_index("candidate_id")
     selected = []
     for configured in selection:

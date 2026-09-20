@@ -11,6 +11,7 @@ from __future__ import annotations
 
 from contextlib import asynccontextmanager
 from typing import Any
+import httpx
 
 from fastapi import Body, FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
@@ -135,7 +136,7 @@ async def generate(task_id: str, request: GenerateRequest = Body(...)) -> Genera
             temperature=task.temperature,
             model=request.model,
         )
-    except GeminiError as exc:
+    except (GeminiError, httpx.HTTPError) as exc:
         return as_fallback(str(exc))
 
     return GenerateResponse(
@@ -153,5 +154,5 @@ async def models() -> dict[str, object]:
         raise HTTPException(status_code=503, detail="GEMINI_API_KEY is not configured.")
     try:
         return {"models": await app.state.gemini.list_models()}
-    except GeminiError as exc:
-        raise HTTPException(status_code=exc.status_code or 502, detail=str(exc)) from exc
+    except (GeminiError, httpx.HTTPError) as exc:
+        raise HTTPException(status_code=getattr(exc, 'status_code', None) or 502, detail=str(exc)) from exc

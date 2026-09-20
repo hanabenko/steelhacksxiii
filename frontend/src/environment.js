@@ -24,6 +24,7 @@ export function createEnvironment(scene,sun,ambient){
   return {
     setConditions(value){conditions={...DEFAULT_CONDITIONS,...value};hour=conditions.hour;rebuild();},
     setUpgrades(value){upgrades=value;rebuild();},start(){cycling=true;},
+    stop(){cycling=false;hour=conditions.hour;},
     update(dt,realDt=dt){
       elapsed+=dt>0?realDt:0;if(cycling&&conditions.dayNight)hour=(hour+dt/30)%24;
       const daylight=Math.max(0,Math.sin((hour-6)*Math.PI/12)),wet=conditions.weather!=='clear';

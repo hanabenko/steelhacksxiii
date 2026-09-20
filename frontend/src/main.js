@@ -66,6 +66,10 @@ import {
     exportScenario,
 } from "./model.js";
 import { runSimulation } from "./simulation.js";
+import {createServices,sceneContext} from './services.js';
+import {installAssistant} from './assistant.js';
+import {installSumoStudy} from './sumo-study.js';
+import {trialPreviewPlan} from './trial-preview.js';
 import map from "./data/intersection.json" with { type: "json" };
 
 const icon = (name, cls = "") =>
@@ -127,6 +131,8 @@ const simulationEndpoint = import.meta.env.VITE_SIMULATION_API_URL || "";
 let scene, tutorial;
 let gameBaseline=null;
 let gameMode=false, activeScenario=null, freeSession=null, budgetLimit=BUDGET, hazardTool=null;
+let assistant, sumoStudy;
+const services=createServices({base:import.meta.env.VITE_APP_API_URL||'/api'});
 
 const intersectionOptions = INTERSECTIONS.map(
     (site) => `<option value="${site.id}">${site.name}</option>`,
@@ -282,6 +288,8 @@ function toast(message) {
     );
 }
 function markDirty() {
+    assistant?.invalidate();
+    sumoStudy?.clear();
     if(gameMode&&gameBaseline)$('#game-score').textContent=`Baseline: ${gameBaseline.accidents} modeled accidents. Design changed — test again for your new score.`;
     revision++;
     $("#result-scope").disabled = true;
@@ -397,6 +405,13 @@ function place(type, zone, intersection = DEFAULT_INTERSECTION) {
 }
 try {
     scene = createIntersection($("#scene"), place, (event) => {
+        if(event.type==='replay'){
+            $('#playback-title').textContent=event.active?'SUMO · Forbes / Bigelow':'A city in motion';
+            $('.signal-hud small').textContent=event.active?'Recorded SUMO signals':'Synced to the illustrative 3D preview';
+            $('#event-chip').hidden=true;$('#toast').classList.remove('visible');
+            $('#collision-demo').disabled=event.active;
+            return;
+        }
         if (event.type === "environment") {
             const status=$("#environment-status");if(status)status.textContent=event.weather+" · "+String(Math.floor(event.hour)).padStart(2,"0")+":"+String(Math.floor(event.hour%1*60)).padStart(2,"0");
             return;
@@ -569,6 +584,7 @@ document.querySelectorAll("[data-speed]").forEach(
 );
 for (const key of ["demand", "green", "av"])
     $(`#${key}`).oninput = (e) => {
+        if(running)return;
         settings[key] = +e.target.value;
         $(`#${key}-value`).textContent =
             e.target.value + { demand: " veh/h", green: " sec", av: "%" }[key];
@@ -576,6 +592,7 @@ for (const key of ["demand", "green", "av"])
         markDirty();
     };
 $("#runs").onchange = (e) => {
+    if(running)return;
     settings.runs = +e.target.value;
     $("#quick-runs").textContent = settings.runs;
     markDirty();
@@ -651,8 +668,7 @@ $("#run").onclick = async () => {
     setHazardTool(null);
     for(const id of ['runs-slider','runs-minus','runs-plus'])$('#'+id).disabled=true;
     $('#condition-controls').disabled=true;
-    scene?.startSimulation();
-    if(paused)$("#pause").click();
+    startFastSimulation();
     $("#quick-run").disabled = true;
     $("#quick-run").textContent = "Running trials…";
     const version = revision;
@@ -662,16 +678,18 @@ $("#run").onclick = async () => {
         .querySelectorAll(".settings-grid input,#runs")
         .forEach((el) => (el.disabled = true));
     refreshIcons();
-    await new Promise((resolve) => setTimeout(resolve, 300));
     try {
-        const next = await runSimulation(items, settings, {
+        const next = simulationEndpoint ? await runSimulation(items, settings, {
             endpoint: simulationEndpoint,
             signal: AbortSignal.timeout(60000),
-        });
+        }) : (await gameTrials(items,settings,progress=>{
+            $('#quick-run').textContent=`Running ${progress.completed}/${settings.runs} trials…`;
+        })).result;
         if (version === revision) {
             result = next;
             $("#result-scope").value = "network";
             displayResult(result);
+            assistant?.debrief();
             toast(
                 `${result.runs} paired trials complete. All 3 intersection comparisons are ready.`,
             );
@@ -682,6 +700,7 @@ $("#run").onclick = async () => {
             `Simulation failed: ${error.message}. Check the backend connection and try again.`;
         toast(`Simulation failed: ${error.message}`);
     } finally {
+        finishFastSimulation();
         running = false;
         $('#runs-slider').disabled=false;$('#runs-minus').disabled=settings.runs<=10;$('#runs-plus').disabled=settings.runs>=500;
         $('#condition-controls').disabled=gameMode;
@@ -1039,7 +1058,7 @@ function gameTrials(upgrades,config,onProgress){
 $('#test-design').onclick=async()=>{
     if(running||!gameBaseline)return;
     running=true;$('#test-design').disabled=true;chooseTool(null);openPanel(null);
-    scene?.startSimulation();if(paused)$('#pause').click();
+    startFastSimulation();
     try {
         const next=await gameTrials(items,settings,progress=>{
             $('#game-score').textContent=`Testing ${progress.completed}/${settings.runs} trials · ${progress.accidents} modeled accidents so far · baseline ${gameBaseline.accidents}`;
@@ -1048,7 +1067,50 @@ $('#test-design').onclick=async()=>{
         const improvement=gameBaseline.accidents?Math.round(saved/gameBaseline.accidents*100):0;
         const score=Math.max(0,Math.min(100,improvement));
         result=next.result;result.score=score;displayResult(result);
+        assistant?.debrief();
         $('#game-score').textContent=`Baseline ${gameBaseline.accidents} → Your design ${next.accidents} modeled accidents · ${saved} prevented (${improvement}%) · Score ${score}/100`;
     } catch(error){$('#game-score').textContent='Test failed: '+error.message+'. Try again.';}
-    finally{running=false;$('#test-design').disabled=false;}
+    finally{finishFastSimulation();running=false;$('#test-design').disabled=false;}
 };
+
+let fastPreview=null;
+function startFastSimulation(runs=settings.runs){
+    finishFastSimulation();
+    const plan=trialPreviewPlan(runs),wasPaused=paused;
+    scene?.setReplay(null);
+    scene?.startSimulation();
+    if(paused)$('#pause').click();
+    document.querySelector('[data-speed="100"]').click();
+    $('#playback-title').textContent=plan.label;
+    // Bound the visual preview even when an external simulation server takes longer.
+    fastPreview={wasPaused,timer:setTimeout(()=>{
+        finishFastSimulation();
+        if(running)$('#playback-title').textContent='Preview finished · calculating results…';
+    },plan.durationMs+500)};
+}
+function finishFastSimulation(){
+    if(fastPreview){
+        const {wasPaused,timer}=fastPreview;fastPreview=null;
+        clearTimeout(timer);
+        scene?.stopSimulation();
+        document.querySelector('[data-speed="1"]').click();
+        if(paused!==wasPaused)$('#pause').click();
+    }
+    $('#playback-title').textContent=paused?'A moment to rethink':'A city in motion';
+}
+assistant=installAssistant({services,getRevision:()=>revision,getContext:()=>sceneContext({items,settings,result,budget:budgetLimit,gameMode})});
+sumoStudy=installSumoStudy({services,container:$('.simulation-settings'),getSettings:()=>settings,getScene:()=>scene,isBusy:()=>running||gameMode,
+    onStart(){
+        running=true;setHazardTool(null);chooseTool(null);startFastSimulation(3);
+        document.querySelectorAll('.settings-grid input,#runs,#runs-slider,#runs-minus,#runs-plus,#run').forEach(el=>el.disabled=true);
+        $('#condition-controls').disabled=true;
+    },
+    onFinish(){
+        finishFastSimulation();
+        if($('#scene canvas')?.dataset.trafficSource==='sumo-traci')$('#playback-title').textContent='SUMO · Forbes / Bigelow';
+        running=false;
+        document.querySelectorAll('.settings-grid input,#runs,#runs-slider,#run').forEach(el=>el.disabled=false);
+        $('#runs-minus').disabled=settings.runs<=10;$('#runs-plus').disabled=settings.runs>=500;
+        $('#condition-controls').disabled=false;
+    },
+});

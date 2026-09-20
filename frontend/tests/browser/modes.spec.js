@@ -31,7 +31,12 @@ test('trial slider and plus/minus respect 10–500; day/night starts when the si
  await page.goto('/');const canvas=page.locator('#scene canvas');await page.locator('#quick-run').click();
  await page.locator('#runs-slider').fill('10');await expect(page.locator('#runs-minus')).toBeDisabled();await page.locator('#runs-plus').click();await expect(page.locator('#runs-value')).toHaveText('11 runs');await page.locator('#runs-slider').fill('500');await expect(page.locator('#runs-plus')).toBeDisabled();await page.locator('#runs-minus').click();await expect(page.locator('#runs-value')).toHaveText('499 runs');await page.locator('#runs-slider').fill('100');
  await page.locator('#start-hour').fill('23');await page.locator('#start-hour').dispatchEvent('change');await expect(canvas).toHaveAttribute('data-time-of-day','23.00');
- for(const speed of ['1','10','100'])await expect(page.locator('[data-speed="'+speed+'"]')).toBeVisible();await page.locator('#run').click();await expect(page.locator('#result-status')).toHaveText('100 RUNS',{timeout:15000});await page.locator('[data-speed="100"]').click();await expect.poll(()=>canvas.getAttribute('data-time-of-day')).not.toBe('23.00');await page.locator('#pause').click();const time=await canvas.getAttribute('data-time-of-day');await page.locator('[data-speed="1"]').click();await expect(canvas).toHaveAttribute('data-time-of-day',time);
+ for(const speed of ['1','10','100'])await expect(page.locator('[data-speed="'+speed+'"]')).toBeVisible();
+ await page.locator('#run').click();await expect(canvas).toHaveAttribute('data-playback-speed','100');
+ await expect.poll(()=>canvas.getAttribute('data-time-of-day')).not.toBe('23.00');
+ await expect(page.locator('#result-status')).toHaveText('100 RUNS',{timeout:15000});
+ await expect(canvas).toHaveAttribute('data-playback-speed','1');await expect(canvas).toHaveAttribute('data-time-of-day','23.00');
+ await page.locator('#pause').click();const time=await canvas.getAttribute('data-time-of-day');await page.locator('[data-speed="1"]').click();await expect(canvas).toHaveAttribute('data-time-of-day',time);
 });
 test('mobile Play game sits above the legend and speed controls; game navigation stays reachable',async({page})=>{
  await page.setViewportSize({width:390,height:844});await page.goto('/');
@@ -48,6 +53,7 @@ test('game completes baseline before editing and compares an unchanged design fa
  await expect(page.locator('#test-design')).toBeDisabled();
  await expect(page.locator('#game-score')).toContainText('0 prevented (0%)',{timeout:15000});
  await expect(page.locator('#game-score')).toContainText('Score 0/100');
+ await expect(page.locator('#scene canvas')).toHaveAttribute('data-playback-speed','1');
  const count=baseline.match(/Baseline: (\d+)/)[1];await expect(page.locator('#game-score')).toContainText('Your design '+count);
  await expect(page.locator('#placement-hint')).not.toBeVisible();
 });

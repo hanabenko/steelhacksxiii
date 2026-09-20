@@ -1,4 +1,5 @@
 import { buildVehicleVariant, animateVehicleWheels } from './vehicle-variants.js';
+import {createReplayLayer} from './replay.js';
 import { recordPedestrianContact } from './pedestrian-safety.js';
 import { createEnvironment } from './environment.js';
 import {ROAD_BLOCKS,nearestRoadPoint} from './road-blocks.js';
@@ -16,6 +17,7 @@ import map from './data/intersection.json' with { type: 'json' };
 import { centerOf, clearOfSignals, clipSegment, roadPoint } from './campus-geometry.js';
 import { random } from './model.js';
 import { createArchitecture } from './architecture.js';
+import { signalState } from './signals.js';
 import { APPROACHES, placementFor, createUpgrade, colorPreview, disposeUpgrade } from './infrastructure.js';
 
 export function createIntersection(container, onPlace, onEvent) {
@@ -132,11 +134,10 @@ export function createIntersection(container, onPlace, onEvent) {
   function focusLandmark(id){navigation.setMode('pan');const landmark=landmarks.find(l=>l.id===id);if(!landmark)return;const [x,z]=landmark.point;controls.target.set(x,landmark.height*.4,z);camera.position.set(x+160,landmark.height*.4+190,z+200);camera.zoom=id==='cathedral'?.7:1.3;camera.updateProjectionMatrix();controls.update();}
   let hovered=null,validatePlacement=()=>null,lastSignal='';
   const placementRay=new THREE.Raycaster();
-  function refreshPreviews(){for(const group of previews.children)colorPreview(group,{hovered:group.userData.zone===hovered,invalid:!!validatePlacement(selected,group.userData.zone)});}
-  const replayVehicleColors=['#f3ca49','#3f79d3','#ea665b','#59b5b5','#f6f0e2','#596acd'];
-  const replayColor=id=>replayVehicleColors[[...String(id)].reduce((sum,char)=>sum+char.charCodeAt(0),0)%replayVehicleColors.length];
-  function createVehicleActor(id){
-    const g=new THREE.Group(),color=replayColor(id);
+  function refreshPreviews(){for(const group of previews.children)colorPreview(group,{hovered:group.userData.intersection+":"+group.userData.zone===hovered,invalid:!!validatePlacement(selected,group.userData.zone,group.userData.intersection)});for(const [name,label] of zoneLabels){const error=hovered===name?validatePlacement(selected,name.split(':')[1],name.split(':')[0]):null;label.classList.toggle('invalid',!!error);label.textContent=error||intersectionById(name.split(':')[0]).name+' · '+name.split(':')[1]+' · build here';}}
+  const cars=[];const traffic=createTraffic(roadFeatures,42,map.points);let designItems=[];
+  for(let i=0;i<42;i++){
+    const g=new THREE.Group(),color=['#f3ca49','#3f79d3','#ea665b','#59b5b5','#f6f0e2','#596acd'][i%6];
     box(2,1.1,4.1,0,.8,0,color,g);box(1.75,.85,2.1,0,1.65,-.2,color,g);box(1.58,.55,.05,0,1.68,-1.27,'#495f60',g);box(1.58,.55,.05,0,1.68,.88,'#495f60',g);
     for(const x of [-1,1])for(const z of [-1.3,1.3]){
       const tire=new THREE.Mesh(new THREE.CylinderGeometry(.39,.39,.25,12),mat('#283545'));tire.rotation.z=Math.PI/2;tire.position.set(x,.53,z);tire.castShadow=true;g.add(tire);
@@ -153,9 +154,12 @@ export function createIntersection(container, onPlace, onEvent) {
     box(1.6,.16,.08,0,.55,-2.1,'#b2c0ce',g);
     const brakeLights=[];for(const x of [-.68,.68]){const lamp=box(.43,.24,.07,x,.96,-2.09,'#e94e4c',g);lamp.material=lamp.material.clone();brakeLights.push(lamp);}
     box(.4,.15,.05,-.65,.9,2.08,'#fff3c1',g);box(.4,.15,.05,.65,.9,2.08,'#fff3c1',g);
-    scene.add(g);g.visible=false;return {id,type:'vehicle',g};
+    const avMarker=box(.9,.12,.9,0,2.15,-.2,'#7bbdc0',g);avMarker.visible=false;
+    const hazardLights=[];for(const x of [-.85,.85])for(const z of [-2.13,2.13]){const lamp=box(.22,.22,.06,x,1,z,'#ffb82e',g);lamp.material=lamp.material.clone();lamp.material.emissive.setHex(0xff9400);lamp.material.emissiveIntensity=2;lamp.visible=false;hazardLights.push(lamp);}
+    const vehicle=traffic.vehicles[i];let model={g,avMarker,brakeLights,hazardLights,wheels:[]};
+    if(vehicle.kind!=='car'){for(const lamp of [...brakeLights,...hazardLights])lamp.material.dispose();for(const child of [...g.children]){child.geometry?.dispose();g.remove(child);}model={g,...buildVehicleVariant(vehicle.kind,g,{box,mat,textures:labelTextures})};}
+    g.rotation.y=vehicle.pose.angle;scene.add(g);cars.push(model);
   }
-<<<<<<< HEAD
   renderer.domElement.dataset.vehicleTypes=[...new Set(traffic.vehicles.map(v=>v.kind))].join(',');
   const collision=createCollisionPreview(scene,cars.filter((_,i)=>traffic.vehicles[i].kind==='car').map(car=>car.g));
   const pedestrians=[];
@@ -179,46 +183,9 @@ export function createIntersection(container, onPlace, onEvent) {
     }
     const person={g,legs,arms,p:-55+i*7,side:i%2?9:-9};const start=roadPoint(roadFeatures,'Forbes Avenue','x',person.p,person.side);g.position.set(start.x,.28,start.z);
     scene.add(g);pedestrians.push(person);
-=======
-  function createPedestrianActor(id){
-    const g=new THREE.Group();box(.5,1,.4,0,.95,0,['#ce8653','#4d7770','#e5d7b3','#899aad'][[...String(id)].reduce((sum,char)=>sum+char.charCodeAt(0),0)%4],g);
-    const head=new THREE.Mesh(new THREE.SphereGeometry(.25,8,6),mat('#bca285'));head.position.y=1.75;g.add(head);
-    const legs=[box(.16,.65,.2,-.14,.3,0,'#435249',g),box(.16,.65,.2,.14,.3,0,'#435249',g)];
-    scene.add(g);g.visible=false;return {id,type:'pedestrian',g,legs};
->>>>>>> cf6f501877f7fb0067365153a0b117dc193a782f
   }
-  const cars=new Map(),pedestrians=new Map();
-  const removeReplayActor=actor=>{actor.g.traverse(object=>object.geometry?.dispose());scene.remove(actor.g);};
   const halo=new THREE.Mesh(new THREE.RingGeometry(2.6,3.1,48),new THREE.MeshBasicMaterial({color:0xe6a34a,transparent:true,opacity:.8,side:THREE.DoubleSide}));halo.rotation.x=-Math.PI/2;halo.visible=false;scene.add(halo);
-  let paused=matchMedia('(prefers-reduced-motion: reduce)').matches,speed=1,elapsed=0,previous=performance.now(),lastEvent=-99,eventTime=-99,selected=null,settings={green:35,av:0,demand:800},eventsVisible=true,frameId,replay=null,replayTime=0,lastReplayEvent=null;
-  const replayPoint=(longitude,latitude)=>{
-    const east=(longitude-map.center.lon)*111320*Math.cos(map.center.lat*Math.PI/180);
-    const north=-(latitude-map.center.lat)*111320;
-    return [east*Math.cos(map.rotation)+north*Math.sin(map.rotation),-east*Math.sin(map.rotation)+north*Math.cos(map.rotation)];
-  };
-  const interpolate=(a,b,ratio)=>a===undefined?b:b===undefined?a:(typeof a==='number'&&typeof b==='number'?a+(b-a)*ratio:a);
-  function signalFromState(state,offset,length){const part=state.slice(offset,offset+length);return part.includes('G')?'green':part.includes('y')?'amber':'red';}
-  function applyReplaySignals(time){
-    const timeline=replay?.signal_states||[];if(!timeline.length)return;
-    let entry=timeline[0];for(const candidate of timeline){if(candidate.t>time)break;entry=candidate;}
-    const state=entry.state||'';const penn=signalFromState(state,0,3),cross=signalFromState(state,8,7);const signalKey=`${penn}/${cross}/${entry.t}`;
-    if(signalKey!==lastSignal){lastSignal=signalKey;onEvent({type:'signals',penn,cross,remaining:Math.max(0,Math.ceil(entry.t-time)),paused});}
-    signalLamps.forEach(({lamp,axis,index})=>{const value=axis==='x'?penn:cross;const lit=index===({red:0,amber:1,green:2}[value]);const c=lit?[0xff493e,0xffbf35,0x45ed99][index]:0x172231;lamp.material.color.setHex(c);lamp.material.emissive.setHex(lit?c:0);lamp.scale.setScalar(lit?1.12:1);});
-  }
-  function replayFramesAt(time){
-    const frames=replay?.frames||[];if(!frames.length)return;
-    let nextIndex=frames.findIndex(frame=>frame.t>=time);if(nextIndex<0)nextIndex=frames.length-1;
-    const next=frames[nextIndex],previousFrame=frames[Math.max(0,nextIndex-1)];const span=Math.max(.001,next.t-previousFrame.t),ratio=Math.max(0,Math.min(1,(time-previousFrame.t)/span));
-    const currentById=new Map(previousFrame.agents.map(agent=>[agent.id,agent])),nextById=new Map(next.agents.map(agent=>[agent.id,agent]));
-    const ids=new Set([...currentById.keys(),...nextById.keys()]);
-    for(const id of ids){const current=currentById.get(id),following=nextById.get(id),agent=current||following;const actors=agent.type==='pedestrian'?pedestrians:cars;let actor=actors.get(id);if(!actor){actor=agent.type==='pedestrian'?createPedestrianActor(id):createVehicleActor(id);actors.set(id,actor);}if(!current||!following){actor.g.visible=Boolean(agent);if(!agent)continue;}else actor.g.visible=true;
-      const longitude=interpolate(current?.longitude,following?.longitude,ratio),latitude=interpolate(current?.latitude,following?.latitude,ratio);if(longitude==null||latitude==null)continue;const [x,z]=replayPoint(longitude,latitude);actor.g.position.set(x,agent.type==='pedestrian'?.28:.25,z);const heading=interpolate(current?.heading,following?.heading,ratio);if(Number.isFinite(heading))actor.g.rotation.y=heading*Math.PI/180;if(agent.type==='pedestrian')actor.legs.forEach((leg,index)=>{leg.rotation.x=Math.sin(time*7+index*Math.PI)*.3;});
-    }
-    for(const [id,actor] of cars)if(!ids.has(id)){removeReplayActor(actor);cars.delete(id);}for(const [id,actor] of pedestrians)if(!ids.has(id)){removeReplayActor(actor);pedestrians.delete(id);}
-    applyReplaySignals(time);
-    const event=(replay.safety_events||[]).find(candidate=>Math.abs(candidate.t-time)<=.55);if(event&&event!==lastReplayEvent){lastReplayEvent=event;const [x,z]=replayPoint(event.longitude,event.latitude);halo.position.set(x,.5,z);if(eventsVisible)onEvent({type:'near-miss',ttc:Number(event.ttc_s).toFixed(1)});}halo.visible=eventsVisible&&event!=null;
-  }
-  function setReplay(payload){replay=payload;replayTime=0;lastReplayEvent=null;cars.forEach(removeReplayActor);pedestrians.forEach(removeReplayActor);cars.clear();pedestrians.clear();replayFramesAt(0);}
+  let paused=matchMedia('(prefers-reduced-motion: reduce)').matches,speed=1,elapsed=0,previous=performance.now(),lastEvent=-99,eventTime=-99,selected=null,settings={green:35,av:0,demand:800},eventsVisible=true,frameId;
   function pick(clientX,clientY){
     if(!selected)return null;
     const rect=renderer.domElement.getBoundingClientRect();
@@ -245,19 +212,23 @@ export function createIntersection(container, onPlace, onEvent) {
   container.addEventListener('dragover',e=>{e.preventDefault();hover(e.clientX,e.clientY);e.dataTransfer.dropEffect=hovered&&!validatePlacement(selected,hovered.split(":")[1],hovered.split(":")[0])?'copy':'none';});
   container.addEventListener('dragleave',()=>{hovered=null;refreshPreviews();});
   container.addEventListener('drop',e=>{e.preventDefault();hovered=null;refreshPreviews();const type=e.dataTransfer.getData('application/interlock');const zone=pick(e.clientX,e.clientY);if(type&&zone)onPlace(type,zone.split(":")[1],zone.split(":")[0]);else onEvent({type:'hint',message:'Drop directly onto a blue upgrade silhouette. Nothing was charged.'});});
+  const replayLayer=createReplayLayer(scene,map);
   function animate(now){frameId=requestAnimationFrame(animate);const realDt=Math.min((now-previous)/1000,.08);navigation.update(realDt);const dt=realDt*(paused?0:speed);previous=now;elapsed+=dt;
-<<<<<<< HEAD
+    renderer.domElement.dataset.playbackSpeed=String(speed);
+    renderer.domElement.dataset.simulationTime=elapsed.toFixed(2);
     const sky=environment.update(dt,realDt);renderer.domElement.dataset.timeOfDay=sky.hour.toFixed(2);renderer.domElement.dataset.weather=sky.weather;
     onEvent({type:'environment',...sky});
-    const signals=signalState(elapsed,settings.green),xGreen=signals.penn==='green',zGreen=signals.cross==='green';
-    const look=new THREE.Vector3();camera.getWorldDirection(look);const viewPoint=navigation.mode==='street'?camera.position.clone().addScaledVector(look,35):controls.target;const viewedSite=nearestIntersection(viewPoint.x,viewPoint.z,INTERSECTIONS);renderer.domElement.dataset.viewedIntersection=viewedSite.id;
+    const replayState=replayLayer.update(dt);
+    const signals=replayLayer.active?(replayLayer.signals||{penn:'red',cross:'red',remaining:0}):signalState(elapsed,settings.green),xGreen=signals.penn==='green',zGreen=signals.cross==='green';
+    const look=new THREE.Vector3();camera.getWorldDirection(look);const viewPoint=navigation.mode==='street'?camera.position.clone().addScaledVector(look,35):controls.target;const viewedSite=replayLayer.active?intersectionById('pitt-forbes-bigelow'):nearestIntersection(viewPoint.x,viewPoint.z,INTERSECTIONS);renderer.domElement.dataset.viewedIntersection=viewedSite.id;
     const signalKey=`${viewedSite.id}/${signals.penn}/${signals.cross}/${signals.remaining}/${paused}`;
     if(signalKey!==lastSignal){lastSignal=signalKey;onEvent({type:'signals',...signals,paused,site:viewedSite});}
     signalLamps.forEach(({lamp,axis,index})=>{const state=axis==='x'?signals.penn:signals.cross;const lit=index===({red:0,amber:1,green:2}[state]);const c=lit?[0xff493e,0xffbf35,0x45ed99][index]:0x172231;lamp.material.color.setHex(c);lamp.material.emissive.setHex(lit?c:0);lamp.scale.setScalar(lit?1.12:1);});
+    if(!replayLayer.active){
     renderer.domElement.dataset.incident=collision.update(dt,eventsVisible);
     const hurt=pedestrians.find(p=>p.injured),incident=collision.incident||(hurt?{x:hurt.g.position.x,z:hurt.g.position.z,radius:2}:null);
     const oldDistances=traffic.vehicles.map(v=>v.s);
-    traffic.update(dt,signals,designItems,incident,pedestrians.map(p=>({x:p.g.position.x,z:p.g.position.z})),settings.conditions);
+    traffic.update(replayLayer.active?0:dt,signals,designItems,incident,pedestrians.map(p=>({x:p.g.position.x,z:p.g.position.z})),settings.conditions);
     cars.forEach((car,i)=>{const vehicle=traffic.vehicles[i];car.g.visible=vehicle.enabled;car.g.position.set(vehicle.pose.x,.25,vehicle.pose.z);
       const delta=Math.atan2(Math.sin(vehicle.pose.angle-car.g.rotation.y),Math.cos(vehicle.pose.angle-car.g.rotation.y));car.g.rotation.y+=delta*Math.min(1,dt*9);
       animateVehicleWheels(car,Math.max(0,vehicle.s-oldDistances[i]));
@@ -294,10 +265,9 @@ export function createIntersection(container, onPlace, onEvent) {
     // Following-gap marker belongs only to the animated preview.
     if(elapsed-lastEvent>8){for(const a of traffic.vehicles){if(!a.enabled||a.speed<1)continue;const b=traffic.vehicles.find(b=>b!==a&&b.enabled&&b.route===a.route&&b.s>a.s&&b.s-a.s<15&&a.speed>b.speed+1);if(b){const ttc=(b.s-a.s-4.5)/(a.speed-b.speed);if(ttc>0&&ttc<1.5){lastEvent=elapsed;eventTime=elapsed;halo.position.set(a.pose.x,.5,a.pose.z);if(eventsVisible)onEvent({type:'near-miss',ttc:ttc.toFixed(1)});break;}}}}
     halo.visible=eventsVisible&&elapsed-eventTime<2;halo.scale.setScalar(1+Math.sin(elapsed*7)*.08);
-=======
-    if(replay){replayTime+=dt;if(replayTime>replay.duration_s)replayTime=0;replayFramesAt(replayTime);}
-    halo.scale.setScalar(1+Math.sin(elapsed*7)*.08);
->>>>>>> cf6f501877f7fb0067365153a0b117dc193a782f
+    }
+    if(replayLayer.active){cars.forEach(car=>car.g.visible=false);pedestrians.forEach(p=>p.g.visible=false);halo.visible=false;renderer.domElement.dataset.replayTime=String(replayState.time);}
+    renderer.domElement.dataset.trafficPosition=traffic.vehicles.filter(v=>v.enabled).reduce((sum,v)=>sum+v.s,0).toFixed(2);
     controls.update();
     const heading=navigation.mode==='street'?camera.rotation.y:Math.atan2(camera.position.x-controls.target.x,camera.position.z-controls.target.z);
     const degrees=((Math.round(heading*180/Math.PI)%360)+360)%360;
@@ -317,6 +287,8 @@ export function createIntersection(container, onPlace, onEvent) {
     frameCampus, focusLandmark,
     setHazardTool(type){hazardTool=type;hazardHover=null;clear(hazardPreviews);potholeGhost.visible=false;renderer.domElement.dataset.hazardTool=type||'';if(type)for(const block of ROAD_BLOCKS)hazardPreviews.add(roadFootprint(block));renderer.domElement.style.cursor=type?'crosshair':'grab';},
     startSimulation(){environment.start();},
+    stopSimulation(){environment.stop();},
+    setReplay(value){replayLayer.set(value);renderer.domElement.dataset.trafficSource=value?'sumo-traci':'illustrative';onEvent({type:'replay',active:!!value});},
     jumpToIntersection(id,top=false){if(intersectionById(id))focusIntersection(top,id);},
     rotateView(degrees){
       const angle=degrees*Math.PI/180;
@@ -334,23 +306,14 @@ export function createIntersection(container, onPlace, onEvent) {
     setPlacementValidator(fn){validatePlacement=fn;},
     setTool(type){selected=type;hovered=null;clear(previews);if(type){for(const site of INTERSECTIONS)for(const zone of APPROACHES)previews.add(createUpgrade(type,zone,{preview:true,intersection:site.id}));refreshPreviews();}renderer.domElement.style.cursor=type?'crosshair':'grab';},
     setUpgrades(items){
-<<<<<<< HEAD
       designItems=items;environment.setUpgrades(items);signalLamps.splice(permanentSignalCount);clear(upgrades);
       for(const item of items){const group=createUpgrade(item.type,item.zone,{intersection:item.intersection||DEFAULT_INTERSECTION});upgrades.add(group);if(item.type==='signal')group.traverse(lamp=>{if(lamp.userData.signalIndex!==undefined)signalLamps.push({lamp,axis:placementFor(item.type,item.zone,item.intersection||DEFAULT_INTERSECTION).axis,index:lamp.userData.signalIndex});});}
       refreshPreviews();
     },
     setPaused(value){paused=value;},setSpeed(value){speed=value;},setSettings(value){settings={...value};environment.setConditions(value.conditions);cars.forEach((car,i)=>{traffic.vehicles[i].enabled=(i%14)<Math.max(3,Math.ceil(value.demand/1600*14));car.g.visible=traffic.vehicles[i].enabled;car.avMarker.visible=false;/* AV visualization disabled: (i*7%100)<value.av */});},
     toggleLayer(name,value){if(name==='buildings')buildings.visible=value;if(name==='events')eventsVisible=value;if(name==='pedestrians'){pedestriansVisible=value;pedestrians.forEach(p=>p.g.visible=value);}},
-=======
-      signalLamps.splice(permanentSignalCount);clear(upgrades);
-      for(const item of items){const group=createUpgrade(item.type,item.zone,{intersection:item.intersection||DEFAULT_INTERSECTION});upgrades.add(group);if(item.type==='signal')group.traverse(lamp=>{if(lamp.userData.signalIndex!==undefined)signalLamps.push({lamp,axis:placementFor(item.type,item.zone,item.intersection||DEFAULT_INTERSECTION).axis,index:lamp.userData.signalIndex});});}
-      refreshPreviews();
-    },
-    setPaused(value){paused=value;},setSpeed(value){speed=value;},setSettings(value){settings={...value};},setReplay,
-    toggleLayer(name,value){if(name==='buildings')buildings.visible=value;if(name==='events')eventsVisible=value;if(name==='pedestrians')pedestrians.forEach(p=>p.g.visible=value);},
->>>>>>> cf6f501877f7fb0067365153a0b117dc193a782f
     view:focusIntersection,
     zoom(amount){if(navigation.mode==='street')navigation.nudge(amount>1?'forward':'back');else{camera.zoom=THREE.MathUtils.clamp(camera.zoom*amount,.1,5);camera.updateProjectionMatrix();}},
-    dispose(){cancelAnimationFrame(frameId);observer.disconnect();navigation.dispose();environment.dispose();controls.dispose();clear(previews);clear(upgrades);labelLayer.remove();landmarkLayer.remove();scene.traverse(o=>{o.geometry?.dispose();if(o.material&&!materials.has(o.material.color?.getStyle()))o.material.dispose?.();});materials.forEach(m=>m.dispose());labelTextures.forEach(t=>t.dispose());renderer.dispose();renderer.domElement.remove();},
+    dispose(){cancelAnimationFrame(frameId);observer.disconnect();navigation.dispose();environment.dispose();replayLayer.dispose();controls.dispose();clear(previews);clear(upgrades);labelLayer.remove();landmarkLayer.remove();scene.traverse(o=>{o.geometry?.dispose();if(o.material&&!materials.has(o.material.color?.getStyle()))o.material.dispose?.();});materials.forEach(m=>m.dispose());labelTextures.forEach(t=>t.dispose());renderer.dispose();renderer.domElement.remove();},
   };
 }

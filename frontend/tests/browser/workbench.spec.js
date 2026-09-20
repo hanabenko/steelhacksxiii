@@ -120,6 +120,8 @@ test('walkthrough guides a real upgrade, budget, run, and comparison',async({pag
   await expect(page.locator('#tour-title')).toHaveText('See what changed');
   await expect(page.locator('#change-risk')).toHaveClass(/improved/);
   await expect(page.locator('.comparison-explain')).toContainText('original street');
+  await page.locator('#tour-next').click();await expect(page.locator('#tour-title')).toHaveText('Ask your Street assistant');
+  await expect(page.locator('.header .assistant summary')).toHaveClass(/tour-highlight/);
   await page.locator('#tour-next').click();await expect(page.locator('.walkthrough')).not.toBeVisible();
   await expect(page.getByRole('button',{name:'Start walkthrough'})).toBeFocused();
 });
@@ -151,6 +153,8 @@ test('mobile walkthrough can be completed without covering required controls',as
   await page.locator('[data-tool="crosswalk"]').click();await page.locator('[data-intersection="pitt-forbes-bigelow"][data-zone="west"]').click();
   await page.locator('#tour-next').click();await (await page.locator('body').getAttribute('data-mode')==='game'?page.locator('#test-design'):page.locator('#run')).click();
   await expect(page.locator('#tour-next')).toBeEnabled();await page.locator('#tour-next').click();
+  await page.locator('#tour-next').click();
+  await expect(page.locator('#tour-title')).toHaveText('Ask your Street assistant');
   await page.locator('#tour-next').click();
   await expect(page.locator('.walkthrough')).not.toBeVisible();
   expect(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth)).toBe(true);

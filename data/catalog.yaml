@@ -1,6 +1,6 @@
 schema_version: 1
-generated_at: '2026-09-19T18:09:58.296034+00:00'
-data_root: /Users/hana/Documents/Code/steelhacksxiii/data
+generated_at: '2026-09-20T04:27:31.081502+00:00'
+data_root: C:\Users\fuzzs\stehacks13\steelhacksxiii\data
 sources:
 - id: domi_penn_avenue_rightsizing
   enabled: true
@@ -206,7 +206,14 @@ sources:
   - Feed has not updated since 2021.
   - Only the most recent count at each location is retained.
   - Not every study contains volume or speed measurements.
-  retrieved_at: '2026-09-19T18:09:58.237492+00:00'
-  status: existing
+  retrieved_at: '2026-09-20T04:27:30.875674+00:00'
+  status: downloaded
   bytes: 421434
   sha256: 6ad5bd9bb3360e0dbf41a1327779f7f95e7b01f935cc6c6e74de5c0590f9445f
+  final_url: https://data.wprdc.org/dataset/a45d5ee0-c7d2-4663-a153-8434e1a26779/resource/6b8b7fc6-75f6-498f-9830-5df1bf5bdfa5/download/traffic_counter_img.geojson
+  response_headers:
+    content-type: application/json
+    content-length: '421434'
+    content-disposition: inline; filename=traffic_counter_img.geojson
+    last-modified: Mon, 08 Jul 2024 18:51:13 GMT
+    etag: '"1720464673.9470975-421434-2130842420"'
