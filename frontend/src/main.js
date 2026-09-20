@@ -57,6 +57,7 @@ import "./guidance.css";
 import "./game.css";
 import "./campus.css";
 import "./network.css";
+import "./product-shell.css";
 import { createWalkthrough } from "./walkthrough.js";
 import { installInfrastructureDrag } from "./infrastructure-drag.js";
 import { createIntersection } from "./scene.js";
@@ -143,7 +144,7 @@ const intersectionOptions = INTERSECTIONS.map(
 ).join("");
 const app = document.querySelector("#app");
 app.innerHTML = `
-  <header class="header"><a class="brand" href="./" aria-label="Interlock home"><span class="brand-mark">${icon("Route")}</span>Interlock<span class="brand-dot">.</span></a><span class="header-divider"></span><span class="workspace-name">THE CITY IS YOUR SANDBOX</span><nav><button class="nav-button active" id="editor-tab">${icon("Box")} Explore</button><button class="nav-button" id="scenarios-button">${icon("FolderOpen")} My scenario</button></nav><span class="hud-budget">${icon("Wallet")}<span id="budget-hud">$100,000</span><small>TO BUILD WITH</small></span><button class="quiet-button" id="guide-button" aria-label="Start walkthrough">${icon("CircleHelp")} Walkthrough</button></header>
+  <header class="header"><a class="brand" href="./" aria-label="Interlock home"><span class="brand-mark">${icon("Route")}</span>Interlock<span class="brand-dot">.</span></a><nav class="mode-switcher" aria-label="Product mode"><button class="nav-button" id="play-mode" aria-pressed="false">Play</button><button class="nav-button active" id="model-mode" aria-pressed="true">Model</button></nav><div class="header-secondary"><span class="hud-budget">${icon("Wallet")}<span id="budget-hud">$100,000</span><small>AVAILABLE</small></span><button class="quiet-button icon-button" id="guide-button" aria-label="Help and walkthrough" title="Help and walkthrough">${icon("CircleHelp")}</button><button class="quiet-button" id="settings-button">${icon("SlidersHorizontal")} Settings</button></div></header>
   <main>
     <section class="page-heading"><div><div class="eyebrow"><span class="live-dot"></span> BETTER STREETS START HERE</div><h1>A small change. A safer city.</h1><p>Rethink a real intersection. Test the tradeoffs. Find a better way forward.</p></div><button class="outline-button" id="export-button">${icon("Download")} Export scenario</button></section>
     <section class="location-bar"><div class="location-icon">${icon("MapPin")}</div><div><h2>Forbes <span>↔</span> Fifth</h2><p>Pitt campus · Oakland</p></div><span class="location-tag">CAMPUS SANDBOX</span><div class="location-detail">${icon("Map")} <span>Real street geometry<small>OpenStreetMap · illustrative traffic</small></span></div><button class="text-button" id="data-button">Explore the data ${icon("ArrowUpRight")}</button></section>
@@ -188,20 +189,40 @@ app.innerHTML = `
     </div><footer class="page-footer"><span>${icon("MapPin")} Built around Pittsburgh. Designed for possibility.</span><span>Real geometry <b>·</b> Experimental model <b>·</b> Human-centered streets</span></footer>
   </main><section class="upgrade-bar" aria-label="Quick upgrades"><div class="upgrade-bar-heading"><strong>BUILD <span id="tray-budget">$100,000</span></strong><span>Drag a card → match the blue silhouette</span></div><div class="upgrade-slots">${TOOLS.map((t, i) => `<button data-quick-tool="${t.id}" aria-label="Select ${t.name}" aria-pressed="false" title="${t.name}: ${t.detail}"><kbd>${i + 1}</kbd>${icon(t.icon)}<strong>${{ crosswalk: "Crosswalk", bike: "Bike lane", curb: "Curb extension", shelter: "Bus shelter", diet: "Road diet" }[t.id]}</strong><span>${money(t.cost)}</span>${icon("GripVertical", "drag-grip")}</button>`).join("")}</div></section><div class="quick-simulation"><button id="quick-run" aria-label="Quick run simulation">${icon("Play")} Run simulation</button><button id="quick-settings">${icon("SlidersHorizontal")} Settings · <span id="quick-runs">100</span> trials</button></div><nav class="action-dock" aria-label="Intersection tools"><button data-panel="design" aria-controls="design-panel" aria-expanded="false"><span class="dock-icon">${icon("Route")}</span><span><strong>Design</strong><small>Make your move</small></span></button><span class="dock-divider"></span><button data-panel="simulation" aria-controls="simulation-panel" aria-expanded="false"><span class="dock-icon">${icon("Play")}</span><span><strong>Simulate</strong><small>Test the possibilities</small></span></button><span class="dock-divider"></span><button data-panel="results" aria-controls="results-panel" aria-expanded="false"><span class="dock-icon">${icon("ShieldCheck")}</span><span><strong>Impact</strong><small>Find your balance</small></span></button></nav><div class="explore-hint"><span class="hint-dots"><i></i><i></i><i></i></span><button id="tour-launch">New here? Take the walkthrough →</button></div><div id="toast" role="status" aria-live="polite"></div><dialog id="dialog"><div class="dialog-heading"><h2 id="dialog-title"></h2><button id="close-dialog" aria-label="Close dialog">${icon("X")}</button></div><div id="dialog-content"></div></dialog>`;
 const $ = (selector) => document.querySelector(selector);
-document.body.dataset.mode='simulation';
+document.body.dataset.mode='model';
 const sourcesButton=$('#data-button');sourcesButton.textContent='Data sources & model limits';
 $('.simulation-settings').append(sourcesButton);$('.location-bar').remove();
 $('#quick-run').setAttribute('aria-label','Run simulation settings');
-$('.action-dock').insertAdjacentHTML('afterend','<button id="play-mode" class="play-mode">▶ Play</button><section class="scenario-banner" hidden><div><small>PLAY · FIX THE STREETS</small><strong id="scenario-title"></strong><p id="scenario-description"></p></div><button id="new-challenge">New challenge</button><button id="exit-game">Exit game</button></section>');
+$('.action-dock').insertAdjacentHTML('afterend','<section class="scenario-banner" hidden aria-label="Current challenge"><div class="challenge-copy"><small>PLAY · CURRENT CHALLENGE</small><strong id="scenario-title"></strong><p id="scenario-description"></p><dl class="challenge-context"><div><dt>Location</dt><dd id="challenge-location">Pitt campus · Oakland</dd></div><div><dt>Current event</dt><dd id="challenge-constraint"></dd></div></dl></div><div class="challenge-details"></div><div class="challenge-actions"><button id="play-edit-design">Modify street</button><button id="new-challenge">New challenge</button></div></section>');
 $('.playback-status span').id='environment-status';
 const hazardOptions='<option value="">None</option>'+INTERSECTIONS.flatMap(site=>['north','east','south','west'].map(zone=>`<option value="${site.id}/${zone}">${site.name} · ${zone}</option>`)).join('');
 $('.settings-grid').insertAdjacentHTML('afterend',`<fieldset id="condition-controls"><legend>Simulation conditions</legend><p id="mode-explanation">Free simulation: set your own conditions and budget.</p><label>Weather<select id="weather">${Object.entries(WEATHER).map(([id,w])=>`<option value="${id}">${w.label}</option>`).join('')}</select></label><label>Historical weather date<input id="weather-date" type="date" min="2019-01-01" max="2025-12-31" value="2025-01-01"></label><button type="button" id="apply-weather-date">Use historical weather</button><p id="weather-source" role="status"></p><label>Closed approach<select id="closed-road">${hazardOptions}</select></label><label>Large pothole<select id="pothole-road">${hazardOptions}</select></label><label>Starting hour <output id="hour-value">09:00</output><input id="start-hour" type="range" min="0" max="23" value="9"></label><label class="cycle-setting"><input id="day-night" type="checkbox" checked> Day / night cycle</label><label>Build budget ($)<input id="scenario-budget" type="number" min="0" max="500000" step="1000" value="100000"></label></fieldset><div class="free-actions"><button id="free-design">Edit streets</button><button id="free-results">View impact</button></div>`);
-$('#av').closest('label').hidden=true; // AV controls disabled for now; model effects and vehicle markers are also disabled.
+$('#av').disabled=true;
+$('#av').closest('label').insertAdjacentHTML('beforeend','<small class="unsupported-note">AV behavior is not supported by the current simulation contract.</small>');
 for(const id of ['closed-road','pothole-road','scenario-budget'])$('#'+id).closest('label').classList.add('game-condition');
 $('#condition-controls').insertAdjacentHTML('beforeend','<section class="free-hazards"><h3>Place road conditions</h3><p>Click a blue road to place a pothole, or close a full block with barriers at both ends. Repeat to add more.</p><div class="hazard-actions"><button id="add-pothole" type="button">Add pothole</button><button id="add-closure" type="button">Add road closure</button><button id="cancel-hazard" type="button" hidden>Done placing</button></div><p id="hazard-status" role="status"></p><ul id="hazard-list"></ul><button id="clear-hazards" type="button">Clear placed conditions</button></section>');
 const trialSlider=document.createElement('div');trialSlider.className='trial-slider';trialSlider.innerHTML='<button id="runs-minus" aria-label="Decrease simulation runs">−</button><input id="runs-slider" aria-label="Monte Carlo runs" type="range" min="10" max="500" step="1" value="100"><button id="runs-plus" aria-label="Increase simulation runs">+</button><output id="runs-value">100 runs</output>';
 $('#runs').classList.add('game-runs');$('#runs').after(trialSlider);
-$('#play-mode').textContent='▶ Play game';
+const modelGroups=document.createElement('div');modelGroups.className='model-control-groups';
+const controlGroup=(title,description)=>{const section=document.createElement('section');section.className='model-control-group';section.innerHTML=`<div class="control-group-heading"><h3>${title}</h3><p>${description}</p></div>`;modelGroups.append(section);return section;};
+const trafficGroup=controlGroup('Traffic','Demand assumptions for each intersection.');
+trafficGroup.append($('#demand').closest('label'));
+trafficGroup.insertAdjacentHTML('beforeend','<p class="availability-note"><strong>Pedestrian demand</strong><span>Uses the scenario default; independent control is not exposed yet.</span></p>');
+trafficGroup.append($('#traffic-data-note'));
+const environmentGroup=controlGroup('Environment','Weather and time conditions applied to the scenario.');
+for(const id of ['weather','weather-date','start-hour','day-night'])environmentGroup.append($('#'+id).closest('label'));
+environmentGroup.append($('#apply-weather-date'),$('#weather-source'));
+const infrastructureGroup=controlGroup('Infrastructure','Signal timing and existing construction controls.');
+infrastructureGroup.append($('#green').closest('label'),$('#closed-road').closest('label'),$('#pothole-road').closest('label'),$('.free-hazards'));
+const autonomyGroup=controlGroup('Autonomy','Adoption controls appear only when the engine supports them.');
+autonomyGroup.append($('#av').closest('label'));
+const simulationGroup=controlGroup('Simulation','Repeatable paired trials using seed 42.');
+for(const note of document.querySelectorAll('.network-run-note'))simulationGroup.append(note);
+simulationGroup.append($('.run-row'));
+const hiddenLegacy=document.createElement('div');hiddenLegacy.className='legacy-condition-controls';hiddenLegacy.hidden=true;hiddenLegacy.append($('#scenario-budget').closest('label'));
+const conditionControls=$('#condition-controls'),modeExplanation=$('#mode-explanation');
+conditionControls.replaceChildren(modeExplanation,modelGroups,hiddenLegacy);
+$('.settings-grid').remove();
 // Move the existing accessible editor controls into one bottom build tray.
 const oldEditor=$('.tools-panel'),buildTray=$('.upgrade-bar');
 const trayBudget=$('#tray-budget');trayBudget.hidden=true;
@@ -213,6 +234,8 @@ const summary=document.createElement('p');summary.id='build-summary';summary.tex
 buildTray.querySelector('.tool-list').after(summary);
 const keyboard=document.createElement('details');keyboard.className='keyboard-placement';keyboard.innerHTML='<summary>Keyboard placement · choose an intersection approach</summary>';keyboard.append($('#approaches'));summary.after(keyboard);
 buildTray.insertAdjacentHTML('beforeend','<button id="cost-sources" class="cost-sources">Oakland cost sources · planning estimates</button>');
+$('.scenario-banner .challenge-details').append(buildTray.querySelector('.budget-card'),$('.results-panel .objectives'));
+$('.metric-table').insertAdjacentHTML('afterend','<div class="model-only unavailable-metrics"><p><strong>Pedestrian wait</strong><span>Unavailable in the local campus model</span></p><p><strong>Vehicle–pedestrian TTC</strong><span>Unavailable in the local campus model</span></p></div>');
 for(const panel of [buildTray,$('.results-panel')])panel.insertAdjacentHTML('beforeend','<button class="return-simulation">← Simulation settings</button>');
 const panels = {
     design: buildTray,
@@ -232,8 +255,10 @@ for (const [name, panel] of Object.entries(panels)) {
 }
 function openPanel(name, { focus = false } = {}) {
     activePanel = name;
-    for (const [key, panel] of Object.entries(panels))
-        panel.hidden = key !== name;
+    for (const [key, panel] of Object.entries(panels)) {
+        const modelResultsColumn=!gameMode&&name==='results'&&key==='simulation';
+        panel.hidden = key !== name&&!modelResultsColumn;
+    }
     document.querySelectorAll("button[data-panel]").forEach((button) => {
         const open = button.dataset.panel === name;
         button.setAttribute("aria-expanded", String(open));
@@ -262,7 +287,7 @@ document.querySelectorAll("[data-close-panel]").forEach(
         (button.onclick = () => {
             const name = button.dataset.closePanel;
             openPanel(null);
-            (gameMode?$(`button[data-panel="${name}"]`):$("#quick-run")).focus({ preventScroll: true });
+            (gameMode?$("#play-edit-design"):$("#model-mode")).focus({ preventScroll: true });
         }),
 );
 $("#export-button").remove();
@@ -275,7 +300,7 @@ document.addEventListener("keydown", (event) => {
     ) {
         const previous = activePanel;
         openPanel(null);
-        (gameMode?$(`button[data-panel="${previous}"]`):$("#quick-run")).focus({ preventScroll: true });
+        (gameMode?$("#play-edit-design"):$("#model-mode")).focus({ preventScroll: true });
     }
 });
 function refreshIcons() {
@@ -411,6 +436,8 @@ function place(type, zone, intersection = DEFAULT_INTERSECTION) {
 try {
     scene = createIntersection($("#scene"), place, (event) => {
         if(event.type==='replay'){
+            document.body.classList.toggle('replay-active',event.active);
+            document.body.classList.toggle('sumo-replay',event.active);
             $('#playback-title').textContent=event.active?'SUMO · Forbes / Bigelow':'A city in motion';
             $('.signal-hud small').textContent=event.active?'Recorded SUMO signals':'Synced to the illustrative 3D preview';
             $('#event-chip').hidden=true;$('#toast').classList.remove('visible');
@@ -470,8 +497,8 @@ try {
             document.body.classList.remove("is-dragging");
             return toast(event.message);
         }
-        $("#event-chip span").textContent =
-            `Following conflict · TTC ${event.ttc}s`;
+        if(!document.body.classList.contains('sumo-replay'))return;
+        $("#event-chip span").textContent = `Replay conflict · TTC ${event.ttc}s`;
         $("#event-chip").hidden = false;
         clearTimeout(eventTimer);
         eventTimer = setTimeout(() => ($("#event-chip").hidden = true), 3000);
@@ -603,15 +630,24 @@ $("#runs").onchange = (e) => {
     markDirty();
 };
 function syncResultPresentation(){
-    $('.result-heading h2').textContent=gameMode?'The impact':'Simulation results';
-    $('.result-scope').firstChild.textContent=gameMode?'Compare ':'View ';
+    $('.result-heading h2').textContent=gameMode?'Challenge results':'Model results';
+    $('.result-scope').firstChild.textContent='View ';
     const headers=$('.metric-header').children;
+<<<<<<< HEAD
     headers[1].hidden=!gameMode;headers[2].textContent=gameMode?'AFTER':'RESULT';headers[3].hidden=!gameMode;
     for(const key of ['risk','speed','delay','throughput','pedestrianThroughput','access']){
         $('#before-'+key).hidden=!gameMode;$('#change-'+key).hidden=!gameMode;
+=======
+    headers[1].hidden=false;headers[1].textContent='BASELINE';headers[2].textContent=gameMode?'YOUR DESIGN':'SCENARIO';headers[3].hidden=false;headers[3].textContent='Δ';
+    for(const key of ['risk','speed','delay','throughput','access']){
+        $('#before-'+key).hidden=false;$('#change-'+key).hidden=false;
+>>>>>>> ae886d41259957d0d60650b3129541fc11679b27
     }
-    for(const selector of ['.change-key','#compare','.score-card','.objectives'])$(selector).hidden=!gameMode;
-    $('.comparison-explain').innerHTML=gameMode?'<strong>Before:</strong> original street under these same conditions.<br><strong>After:</strong> your upgrades and settings.<br>Paired samples use the same weather, hazards and demand.':'Results for the current street, weather, demand, and signal settings. Change a setting and run again to explore a different scenario.';
+    $('.score-card').hidden=!gameMode;$('#compare').hidden=!gameMode;$('.change-key').hidden=false;
+    $('#before-access').closest('.metric-row').hidden=!gameMode;
+    $('.model-only').hidden=gameMode;
+    $('#before-risk').closest('.metric-row').querySelector('div').innerHTML=(gameMode?'Conflict surrogate':'VV conflict surrogate')+'<small>TTC events / 1k vehicles</small>';
+    $('.comparison-explain').innerHTML=gameMode?'<strong>Baseline:</strong> original street under the same challenge conditions.<br><strong>Your design:</strong> upgrades tested with matched seeded trials.':'<strong>Baseline:</strong> original street under the same demand and environment.<br><strong>Scenario:</strong> current controls and infrastructure. Values are physical or explicitly labeled surrogate metrics.';
 }
 function displayResult(network) {
     syncResultPresentation();
@@ -806,6 +842,7 @@ $("#data-button").onclick = () =>
         "Real place. Transparent assumptions.",
         `<div class="data-badge">${icon("MapPin")} ${map.center.lat.toFixed(5)}° N, ${Math.abs(map.center.lon).toFixed(5)}° W</div><h3>Street geometry</h3><p>Road centerlines and ${map.features.filter((f) => f.tags.building).length} building footprints from <a href="${map.sourceUrl}" target="_blank" rel="noreferrer">OpenStreetMap contributors</a>, retrieved ${map.retrieved}. Licensed under <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noreferrer">ODbL</a>. OSM building parts, mapped trees, paths, and businesses supplement the footprints. Missing heights, facade details, widths, and signal hardware are illustrative. Road tags may lag real street changes.</p><h3>Campus landmarks</h3><p>Cathedral of Learning and Litchfield Towers use OSM building-part footprints and tagged heights. El Jefe’s is placed at its OSM point of interest at 3807 Forbes Avenue, also listed on <a href="https://eljefestaqueria.com/" target="_blank" rel="noreferrer">the restaurant’s website</a>. Untagged heights, facade decoration, widths, and signal hardware are illustrative. Trees mapped within six meters of signals are omitted to keep them clear.</p><p>The explorable area covers the Forbes–Fifth corridor, from the Towers and Forbes shops to the Cathedral and Heinz Chapel. Upgrade placements cover <strong>Forbes/Bigelow, Fifth/Bigelow, and Forbes/Bouquet</strong> together. Paired local trials combine these three intersections; they do not model rerouting or queue spillback.</p><h3>Simulation provenance</h3><p>Paired seeded Monte Carlo samples vary assumed demand and baseline speed. Upgrade effects are explicit placeholder coefficients. Conflict proxy, access score, and costs are game assumptions. No public crash counts calibrate the game score. Car cruising speeds use a nearby WPRDC Fifth/Meyran observation (2018 median 16 mph, 85th percentile 20 mph). The selected demand remains a scenario assumption. Historical weather uses Open-Meteo ERA5 records; weather behavior adjustments are engineering assumptions.</p><div class="dialog-callout">The SUMO signal study uses the connected Python backend and recorded TraCI replay. Campus simulation and game scores use a separate, uncalibrated local model. The animated TTC marker measures short following gaps in the visual preview, separately from the Monte Carlo model.</div>`,
     );
+<<<<<<< HEAD
 $("#scenarios-button").onclick = () => {
     const summary=gameMode?`<p><strong>${activeScenario.title}</strong></p><div class="scenario-summary"><span>${items.length} upgrades</span><span>${money(costOf(items))} spent of ${money(budgetLimit)}</span><span>${result?`Challenge score ${result.score}/100`:'Design not tested'}</span></div>`:`<p><strong>Free simulation · all three campus intersections</strong></p><div class="scenario-summary"><span>${settings.demand} vehicles/hour per intersection</span><span>${WEATHER[settings.conditions.weather].label}</span><span>${settings.runs} rounds</span><span>${result?'Results ready':'Not run for these settings'}</span></div>`;
     dialog('Your current scenario',summary+'<p>This session is held in memory. Leaving game mode restores your free simulation settings and results.</p>');
@@ -816,6 +853,8 @@ $("#editor-tab").onclick = () => {
     openPanel(null);
     scene?.view(false);
 };
+=======
+>>>>>>> ae886d41259957d0d60650b3129541fc11679b27
 scene?.setPlacementValidator(
     (type, zone, intersection) =>
         addUpgrade(items, type, zone, intersection, budgetLimit).error,
@@ -902,7 +941,12 @@ document.addEventListener("keydown", (event) => {
 
 const junctionJumps = document.createElement('div');
 // Keep navigation above the right-side panels on narrow screens.
+<<<<<<< HEAD
 $('#app').append($('.navigation-panel'),$('#event-chip'));
+=======
+$('#app').append($('.navigation-panel'));
+$('.navigation-panel').open=false;
+>>>>>>> ae886d41259957d0d60650b3129541fc11679b27
 $('.navigation-panel').insertAdjacentHTML('beforeend','<p class="preview-accidents">Pedestrian accidents · preview: <strong id="pedestrian-accident-count">0</strong></p>');
 junctionJumps.className = 'intersection-jumps';
 junctionJumps.innerHTML = '<button id="previous-intersection" aria-label="Previous intersection" title="Previous intersection">←</button><span id="jump-intersection-name">Jump to intersection</span><button id="next-intersection" aria-label="Next intersection" title="Next intersection">→</button>';
@@ -982,7 +1026,7 @@ function syncModeControls(){
     $('#runs').disabled=gameMode;
     settings.av=0; // AV simulation is disabled until the feature is re-enabled.
     for(const key of ['demand','green','av']){
-        $('#'+key).value=settings[key];$('#'+key).disabled=gameMode;
+        $('#'+key).value=settings[key];$('#'+key).disabled=key==='av'||gameMode;
         $('#'+key+'-value').textContent=settings[key]+{demand:' veh/h',green:' sec',av:'%'}[key];
     }
     const c=settings.conditions;
@@ -1005,20 +1049,33 @@ function syncModeControls(){
     $('#results-run').textContent=gameMode?'Next challenge →':'Set up a simulation →';
     $('#results-panel .return-simulation').textContent=gameMode?'← Revise design':'← Simulation settings';
     $('.seed-tag').textContent=gameMode?'Seed 42 · paired trials':'Seed 42 · repeatable trials';
+<<<<<<< HEAD
     scene?.setSettings(settings);updateDesign();renderConditions();refreshIcons();
+=======
+    $('#play-mode').classList.toggle('active',gameMode);$('#play-mode').setAttribute('aria-pressed',String(gameMode));
+    $('#model-mode').classList.toggle('active',!gameMode);$('#model-mode').setAttribute('aria-pressed',String(!gameMode));
+    scene?.setSettings(settings);updateDesign();renderConditions();
+>>>>>>> ae886d41259957d0d60650b3129541fc11679b27
 }
 async function startChallenge(kind){
     if(running)return toast('Wait for the current run to finish.');
     if(tutorial?.active)tutorial.stop();
     setHazardTool(null);
     if(!gameMode)freeSession={items:structuredClone(items),settings:structuredClone(settings),budget:budgetLimit,result:structuredClone(result)};
+<<<<<<< HEAD
     gameSession?.abort();
     const session=gameSession=new AbortController();
     activeScenario=makeScenario(Math.random,kind);gameMode=true;document.body.dataset.mode='game';
+=======
+    activeScenario=makeScenario();gameMode=true;document.body.dataset.mode='play';
+>>>>>>> ae886d41259957d0d60650b3129541fc11679b27
     settings=structuredClone(activeScenario.settings);settings.challenge={id:activeScenario.id,title:activeScenario.title};budgetLimit=activeScenario.budget;items=[];chooseTool(null);
-    $('.scenario-banner').hidden=false;$('#scenario-title').textContent=activeScenario.title+' · '+money(budgetLimit);
+    $('.scenario-banner').hidden=false;$('#scenario-title').textContent=activeScenario.title;
     $('#scenario-description').textContent=activeScenario.description;
-    markDirty();syncModeControls();openPanel('design');
+    const condition=activeScenario.settings.conditions;
+    $('#challenge-location').textContent=condition.closure||condition.pothole?intersectionById((condition.closure||condition.pothole).intersection).name:'Pitt campus · Oakland';
+    $('#challenge-constraint').textContent=condition.closure?`${condition.closure.zone} approach closed`:condition.pothole?`Large pothole · ${condition.pothole.zone} approach`:`${WEATHER[condition.weather].label} · ${activeScenario.settings.demand} veh/h`;
+    markDirty();syncModeControls();openPanel(null);
     gameBaseline=null;running=true;$('#test-design').disabled=true;$('#run').disabled=true;$('#quick-run').disabled=true;
     $('#game-score').textContent='Calculating the original street baseline…';
     try {
@@ -1030,18 +1087,24 @@ async function startChallenge(kind){
     finally { if(gameSession===session){ running=false;$('#test-design').disabled=!gameBaseline;$('#run').disabled=!gameBaseline;$('#quick-run').disabled=!gameBaseline; } }
 
 }
+<<<<<<< HEAD
 $('#play-mode').onclick=startChallenge;$('#new-challenge').onclick=startChallenge;
 $('#new-challenge').insertAdjacentHTML('afterend','<button id="campus-challenge">Campus class change</button>');
 $('#campus-challenge').onclick=()=>startChallenge('campus');
 $('#exit-game').onclick=()=>{
     if(!gameMode)return;
     gameSession?.abort();gameSession=null;running=false;finishFastSimulation();
+=======
+function enterModel(){
+    if(running)return toast('Wait for the current run to finish.');
+>>>>>>> ae886d41259957d0d60650b3129541fc11679b27
     if(tutorial?.active)tutorial.stop();
     setHazardTool(null);
-    gameMode=false;$('#run').disabled=false;$('#quick-run').disabled=false;document.body.dataset.mode='simulation';activeScenario=null;$('.scenario-banner').hidden=true;
-    items=freeSession?.items||[];settings=freeSession?.settings||{...DEFAULT_SETTINGS,conditions:{...DEFAULT_CONDITIONS},budget:BUDGET};budgetLimit=freeSession?.budget??BUDGET;
+    gameMode=false;$('#run').disabled=false;$('#quick-run').disabled=false;document.body.dataset.mode='model';activeScenario=null;$('.scenario-banner').hidden=true;
+    items=freeSession?.items||[];settings=freeSession?.settings||{...DEFAULT_SETTINGS,conditions:{...DEFAULT_CONDITIONS},budget:BUDGET};budgetLimit=1_000_000_000;settings.budget=budgetLimit;
     chooseTool(null);markDirty();syncModeControls();
     if(freeSession?.result){result=freeSession.result;$('#result-scope').value='network';displayResult(result);}
+<<<<<<< HEAD
     openPanel(null);scene?.view(false);$('#play-mode').focus();
 };
 $('#free-design').hidden=true;$('#free-results').remove();
@@ -1049,6 +1112,16 @@ for(const button of document.querySelectorAll('.return-simulation')){button.text
 $('#design-panel .return-simulation').classList.add('step-next');
 $('#run').classList.add('step-next');
 $('#results-run').classList.add('step-next');
+=======
+    else openPanel('simulation');
+}
+$('#play-mode').onclick=()=>{if(!gameMode)startChallenge();};$('#new-challenge').onclick=startChallenge;
+$('#model-mode').onclick=enterModel;
+$('#play-edit-design').onclick=()=>openPanel('design',{focus:true});
+$('#settings-button').onclick=()=>gameMode?dialog('Play settings','<p>Challenge traffic, weather, construction, goals, and budget are locked. Choose <strong>New challenge</strong> for another scenario, or switch to <strong>Model</strong> for free-form controls.</p>'):openPanel('simulation',{focus:true});
+$('#free-design').textContent='Edit infrastructure on map';$('#free-design').onclick=()=>openPanel('design',{focus:true});$('#free-results').remove();
+for(const button of document.querySelectorAll('.return-simulation'))button.onclick=()=>openPanel('simulation');
+>>>>>>> ae886d41259957d0d60650b3129541fc11679b27
 function changeConditions(event){
     if(gameMode||running)return;
     const parse=id=>{const value=$('#'+id).value;if(!value)return null;const [intersection,zone]=value.split('/');return{intersection,zone};};
@@ -1146,6 +1219,7 @@ $('#test-design').onclick=async()=>{
 let fastPreview=null;
 function startFastSimulation(runs=settings.runs){
     finishFastSimulation();
+    document.body.classList.add('simulation-running','replay-active');
     const plan=trialPreviewPlan(runs),wasPaused=paused;
     scene?.setReplay(null);
     scene?.startSimulation();
@@ -1159,6 +1233,8 @@ function startFastSimulation(runs=settings.runs){
     },plan.durationMs+500)};
 }
 function finishFastSimulation(){
+    document.body.classList.remove('simulation-running');
+    if(!document.body.classList.contains('sumo-replay'))document.body.classList.remove('replay-active');
     if(fastPreview){
         const {wasPaused,timer}=fastPreview;fastPreview=null;
         clearTimeout(timer);
@@ -1169,6 +1245,11 @@ function finishFastSimulation(){
     $('#playback-title').textContent=paused?'A moment to rethink':'A city in motion';
 }
 assistant=installAssistant({services,getRevision:()=>revision,getContext:()=>sceneContext({items,settings,result,budget:budgetLimit,gameMode})});
+const reportButton=document.createElement('button');
+reportButton.id='report-button';reportButton.className='model-assistant-action';reportButton.innerHTML=`${icon('FileText')} <span>Create report</span>`;
+reportButton.onclick=()=>assistant.report();
+document.body.append(reportButton);
+refreshIcons();
 sumoStudy=installSumoStudy({services,container:$('.simulation-settings'),getSettings:()=>settings,getScene:()=>scene,isBusy:()=>running||gameMode,
     onStart(){
         running=true;setHazardTool(null);chooseTool(null);startFastSimulation(3);
@@ -1184,3 +1265,6 @@ sumoStudy=installSumoStudy({services,container:$('.simulation-settings'),getSett
         $('#condition-controls').disabled=false;
     },
 });
+
+// Product entry point: professional modeling is primary; Play remains one tab away.
+enterModel();
