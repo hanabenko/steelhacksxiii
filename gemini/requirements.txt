@@ -1,0 +1,7 @@
+# Self-contained dependency set for the generative service. Kept out of the
+# root pyproject.toml so the data/simulation environment is unaffected.
+fastapi>=0.115
+uvicorn[standard]>=0.32
+httpx>=0.27
+pydantic>=2.9
+python-dotenv>=1.0
