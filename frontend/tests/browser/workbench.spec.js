@@ -23,12 +23,12 @@ test('renders real geometry with an operational WebGL canvas',async({page})=>{
 test('complete keyboard-accessible design, simulation, undo, and reset',async({page})=>{
   await page.goto('/');
   await openPanel(page,'design');await page.locator('[data-tool="crosswalk"]').click();
-  await page.getByRole('button',{name:'North',exact:true}).click();
+  await page.locator('[data-intersection="pitt-forbes-bigelow"][data-zone="north"]').click();
   await expect(page.locator('#budget')).toHaveText('$88,000');
-  await page.getByRole('button',{name:'North',exact:true}).click();
+  await page.locator('[data-intersection="pitt-forbes-bigelow"][data-zone="north"]').click();
   await expect(page.locator('#toast')).toContainText('already');
   await openPanel(page,'design');await page.locator('[data-tool="curb"]').click();
-  await page.getByRole('button',{name:'East',exact:true}).click();
+  await page.locator('[data-intersection="pitt-forbes-bigelow"][data-zone="east"]').click();
   await expect(page.locator('#budget')).toHaveText('$70,000');
   await openPanel(page,'simulation');await page.getByRole('button',{name:'Run simulation',exact:true}).click();
   await expect(page.locator('#result-status')).toHaveText('100 RUNS');
@@ -46,7 +46,7 @@ test('complete keyboard-accessible design, simulation, undo, and reset',async({p
 test('budget constraint is visible and export contains the scenario',async({page})=>{
   await page.goto('/');
   await openPanel(page,'design');await page.locator('[data-tool="diet"]').click();
-  for(const zone of ['North','East','South','West'])await page.getByRole('button',{name:zone,exact:true}).click();
+  for(const zone of ['North','East','South','West'])await page.locator('[data-intersection="pitt-forbes-bigelow"][data-zone="'+zone.toLowerCase()+'"]').click();
   await expect(page.locator('#budget')).toHaveText('$16,000');
   await expect(page.locator('#toast')).toContainText('Not enough budget');
   const downloaded=page.waitForEvent('download');
@@ -65,7 +65,7 @@ test('mobile layout stays inside viewport and supports tool placement',async({pa
   await page.setViewportSize({width:390,height:844});await page.goto('/');
   await expect(page.locator('#scene canvas')).toBeVisible();
   expect(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth)).toBe(true);
-  await openPanel(page,'design');await page.locator('[data-tool="bike"]').click();await page.getByRole('button',{name:'West',exact:true}).click();await expect(page.locator('#budget')).toHaveText('$76,000');
+  await openPanel(page,'design');await page.locator('[data-tool="bike"]').click();await page.locator('[data-intersection="pitt-forbes-bigelow"][data-zone="west"]').click();await expect(page.locator('#budget')).toHaveText('$76,000');
 });
 test('drag and drop places infrastructure on a raycast approach',async({page})=>{
   await page.goto('/');
@@ -90,7 +90,7 @@ test('drag outside a valid approach does not spend budget',async({page})=>{
 test('editing and simulations remain usable when WebGL is unavailable',async({page})=>{
   await page.addInitScript(()=>{const original=HTMLCanvasElement.prototype.getContext;HTMLCanvasElement.prototype.getContext=function(type,...args){return type.startsWith('webgl')?null:original.call(this,type,...args);};});
   await page.goto('/');await expect(page.getByText('3D view is unavailable')).toBeVisible();
-  await openPanel(page,'design');await page.locator('[data-tool="bike"]').click();await page.getByRole('button',{name:'East',exact:true}).click();
+  await openPanel(page,'design');await page.locator('[data-tool="bike"]').click();await page.locator('[data-intersection="pitt-forbes-bigelow"][data-zone="east"]').click();
   await expect(page.locator('#budget')).toHaveText('$76,000');await openPanel(page,'simulation');await page.locator('#run').click();await expect(page.locator('#result-status')).toHaveText('100 RUNS');
 });
 
@@ -116,7 +116,7 @@ test('walkthrough guides a real upgrade, budget, run, and comparison',async({pag
   await expect(page.locator('#tour-title')).toHaveText('Welcome to your street lab');
   await page.locator('#tour-next').click();await expect(page.locator('.budget-card')).toBeVisible();
   await page.locator('#tour-next').click();await expect(page.locator('#tour-next')).toBeDisabled();
-  await page.locator('[data-tool="crosswalk"]').click();await page.getByRole('button',{name:'East',exact:true}).click();
+  await page.locator('[data-tool="crosswalk"]').click();await page.locator('[data-intersection="pitt-forbes-bigelow"][data-zone="east"]').click();
   await expect(page.locator('#budget-receipt')).toContainText('$12,000 spent');
   await expect(page.locator('#tour-next')).toBeEnabled();await page.locator('#tour-next').click();
   await expect(page.locator('#tour-next')).toBeDisabled();await page.locator('#run').click();
@@ -141,7 +141,7 @@ test('signals advance with playback and stop when paused',async({page})=>{
 
 test('remove refunds the upgrade and invalidates comparison',async({page})=>{
   await page.goto('/');await openPanel(page,'design');await page.locator('[data-tool="bike"]').click();
-  await page.getByRole('button',{name:'North',exact:true}).click();
+  await page.locator('[data-intersection="pitt-forbes-bigelow"][data-zone="north"]').click();
   await page.locator('#placed-summary').click();
   await page.getByRole('button',{name:'Remove Protected bike lane from north at Forbes × Bigelow'}).click();
   await expect(page.locator('#budget')).toHaveText('$100,000');
@@ -152,7 +152,7 @@ test('mobile walkthrough can be completed without covering required controls',as
   await page.setViewportSize({width:390,height:844});await page.goto('/');
   await page.getByRole('button',{name:'Start walkthrough'}).click();
   await page.locator('#tour-next').click();await page.locator('#tour-next').click();
-  await page.locator('[data-tool="crosswalk"]').click();await page.getByRole('button',{name:'West',exact:true}).click();
+  await page.locator('[data-tool="crosswalk"]').click();await page.locator('[data-intersection="pitt-forbes-bigelow"][data-zone="west"]').click();
   await page.locator('#tour-next').click();await page.locator('#run').click();
   await expect(page.locator('#tour-next')).toBeEnabled();await page.locator('#tour-next').click();
   await page.locator('#tour-next').click();
@@ -224,9 +224,9 @@ test('corner observation toggle dismisses native dialogs and walkthroughs',async
 test('three intersections keep separate placements and produce combined and per-site results',async({page})=>{
  await page.goto('/');await openPanel(page,'design');
  for(const id of ['pitt-forbes-bigelow','pitt-fifth-bigelow','pitt-forbes-bouquet']){
-  await page.getByLabel('Edit intersection',{exact:true}).selectOption(id);
+  await expect(page.locator('[data-intersection-picker]')).toHaveCount(0);
   if(await page.locator('[data-tool="crosswalk"]').getAttribute('aria-pressed')!=='true')await page.locator('[data-tool="crosswalk"]').click();
-  await page.getByRole('button',{name:'North',exact:true}).click();
+  await page.locator('[data-intersection="'+id+'"][data-zone="north"]').click();
  }
  await expect(page.locator('#budget')).toHaveText('$64,000');
  await page.locator('#placed-summary').click();await expect(page.locator('#placed-list li')).toHaveCount(3);
@@ -250,11 +250,11 @@ test('street navigation moves while traffic is paused and while interface is hid
  await page.locator('#observe-toggle').click();const riseBefore=(await position()).split(',').map(Number)[1];await page.getByRole('button',{name:'Rise',exact:true}).focus();await page.keyboard.press('Enter');await expect.poll(async()=>Number((await position()).split(',')[1])).toBeGreaterThan(riseBefore);
  await page.locator('button[data-navigation="pan"]').click();await expect(canvas).toHaveAttribute('data-navigation','pan');
  const panBefore=await position();await page.mouse.move(680,450);await page.mouse.down();await page.mouse.move(830,500,{steps:8});await page.mouse.up();await expect.poll(position).not.toBe(panBefore);
- await page.locator('#campus-view').click();await expect(canvas).toHaveAttribute('data-navigation','orbit');
+ await page.locator('#campus-view').click();await expect(canvas).toHaveAttribute('data-navigation','pan');
 });
 
-test('mobile intersection selection and on-screen movement remain reachable',async({page})=>{
- await page.setViewportSize({width:390,height:844});await page.goto('/');await page.getByLabel('Active intersection',{exact:true}).selectOption('pitt-fifth-bigelow');
+test('mobile free navigation and on-screen movement remain reachable',async({page})=>{
+ await page.setViewportSize({width:390,height:844});await page.goto('/');await expect(page.locator('[data-intersection-picker]')).toHaveCount(0);
  await page.locator('.navigation-panel summary').click();await page.locator('button[data-navigation="street"]').click();
  const canvas=page.locator('#scene canvas');const before=await canvas.getAttribute('data-camera-position');await page.getByRole('button',{name:'Move forward',exact:true}).focus();await page.keyboard.press('Enter');await expect.poll(()=>canvas.getAttribute('data-camera-position')).not.toBe(before);
  await page.locator('#observe-toggle').click();await page.locator('#observe-toggle').click();expect(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth)).toBe(true);

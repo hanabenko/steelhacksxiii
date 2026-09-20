@@ -1,0 +1,9 @@
+import { chromium } from '@playwright/test';
+const browser=await chromium.launch({channel:'chrome',headless:true,args:['--enable-unsafe-swiftshader']});
+const page=await browser.newPage({viewport:{width:1440,height:1050}});const errors=[];page.on('pageerror',e=>errors.push(e.message));
+await page.goto('http://127.0.0.1:5173');await page.locator('#collision-demo').click();
+await page.waitForFunction(()=>document.querySelector('#scene canvas')?.dataset.incident==='fire');await page.locator('#pause').click();
+await page.screenshot({path:'artifacts/collision-preview.png'});
+await page.locator('#campus-view').click();await page.locator('[data-quick-tool="crosswalk"]').click();await page.screenshot({path:'artifacts/all-sites-placement.png'});
+await page.locator('button[data-panel="design"]').click();await page.locator('[data-intersection="pitt-fifth-bigelow"][data-zone="north"]').scrollIntoViewIfNeeded();await page.screenshot({path:'artifacts/three-site-design.png'});
+console.log(JSON.stringify({errors}));await browser.close();

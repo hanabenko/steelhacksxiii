@@ -1,3 +1,5 @@
+import { createTraffic } from './traffic.js';
+import { createCollisionPreview } from './collision-preview.js';
 import { createNavigation } from './navigation.js';
 import { INTERSECTIONS, DEFAULT_INTERSECTION, intersectionById } from './intersections.js';
 import * as THREE from 'three';
@@ -18,9 +20,9 @@ export function createIntersection(container, onPlace, onEvent) {
   renderer.domElement.setAttribute('aria-label','Interactive 3D model of the University of Pittsburgh campus between Forbes and Fifth avenues. Use approach buttons to place selected upgrades with a keyboard.');
   container.appendChild(renderer.domElement);
   const controls=new OrbitControls(camera,renderer.domElement);controls.enableDamping=true;controls.maxPolarAngle=Math.PI/2.2;controls.minZoom=.1;controls.maxZoom=5;controls.enablePan=true;controls.screenSpacePanning=true;controls.target.set(0,0,0);
-  const orthographic=camera;let activeIntersection=DEFAULT_INTERSECTION;
-  const navigation=createNavigation({orthographic,controls,element:renderer.domElement,getOrigin:()=>{const site=intersectionById(activeIntersection),road=roadPoint(roadFeatures,site.id===DEFAULT_INTERSECTION?'Schenley Drive':site.crossRoad,'z',site.origin[1]+20);return road?[road.x,road.z]:site.origin;},onCamera:next=>camera=next,onMode:mode=>onEvent({type:'navigation',mode})});
-  function focusIntersection(top=false){navigation.setMode('orbit');const [x,z]=intersectionById(activeIntersection).origin;camera.position.set(x+(top?0:130),top?230:155,z+(top?.01:150));controls.target.set(x,0,z);camera.zoom=1;camera.updateProjectionMatrix();controls.update();}
+  const orthographic=camera;const activeIntersection=DEFAULT_INTERSECTION;
+  const navigation=createNavigation({orthographic,controls,element:renderer.domElement,getOrigin:()=>[controls.target.x,controls.target.z],onCamera:next=>camera=next,onMode:mode=>onEvent({type:'navigation',mode})});
+  function focusIntersection(top=false){navigation.setMode('pan');const [x,z]=intersectionById(activeIntersection).origin;camera.position.set(x+(top?0:130),top?230:155,z+(top?.01:150));controls.target.set(x,0,z);camera.zoom=1;camera.updateProjectionMatrix();controls.update();}
   scene.add(new THREE.HemisphereLight(0xffffff,0xb5bea8,1.7));
   const sun=new THREE.DirectionalLight(0xfffaf1,2);sun.position.set(-180,440,180);sun.castShadow=true;sun.shadow.mapSize.set(2048,2048);Object.assign(sun.shadow.camera,{left:-600,right:600,top:600,bottom:-600,far:1400});sun.shadow.bias=-.001;scene.add(sun);
   const materials=new Map();
@@ -94,16 +96,16 @@ export function createIntersection(container, onPlace, onEvent) {
   const previews=new THREE.Group();scene.add(previews);
   const zoneLabels=new Map();
   const labelLayer=document.createElement('div');labelLayer.className='placement-labels';container.append(labelLayer);
-  for(const name of APPROACHES){const label=document.createElement('span');label.className='placement-target';label.dataset.approach=name;label.hidden=true;labelLayer.append(label);zoneLabels.set(name,label);}
+  for(const site of INTERSECTIONS)for(const name of APPROACHES){const label=document.createElement('span');label.className='placement-target';label.dataset.approach=name;label.dataset.intersection=site.id;label.hidden=true;labelLayer.append(label);zoneLabels.set(site.id+":"+name,label);}
   const landmarkLayer=document.createElement('div');landmarkLayer.className='landmark-labels';container.append(landmarkLayer);
   const landmarkSpecs=[['cathedral','Cathedral of Learning','30678664',163],['towers','Litchfield Towers','154377421',68.4],['union','William Pitt Union','154245869',35],['hillman','Hillman Library','121060908',20],['jefes',"El Jefe’s Taqueria",'2710170993',8]];
   const landmarks=landmarkSpecs.map(([id,name,osmId,height])=>{const feature=map.features.find(f=>f.id===osmId),poi=map.points.find(p=>p.id===osmId);const point=feature?centerOf(feature.points):poi.point;const label=document.createElement('span');label.textContent=name;label.dataset.landmark=id;landmarkLayer.append(label);return{id,name,point,height,label};});
-  function frameCampus(){navigation.setMode('orbit');const zoom=Math.min(container.clientWidth/container.clientHeight*200/760,200/550);controls.target.set(-45,25,-95);camera.position.set(285,405,385);camera.zoom=zoom;camera.updateProjectionMatrix();controls.update();}
-  function focusLandmark(id){navigation.setMode('orbit');const landmark=landmarks.find(l=>l.id===id);if(!landmark)return;const [x,z]=landmark.point;controls.target.set(x,landmark.height*.4,z);camera.position.set(x+160,landmark.height*.4+190,z+200);camera.zoom=id==='cathedral'?.7:1.3;camera.updateProjectionMatrix();controls.update();}
+  function frameCampus(){navigation.setMode('pan');const zoom=Math.min(container.clientWidth/container.clientHeight*200/760,200/550);controls.target.set(-45,25,-95);camera.position.set(285,405,385);camera.zoom=zoom;camera.updateProjectionMatrix();controls.update();}
+  function focusLandmark(id){navigation.setMode('pan');const landmark=landmarks.find(l=>l.id===id);if(!landmark)return;const [x,z]=landmark.point;controls.target.set(x,landmark.height*.4,z);camera.position.set(x+160,landmark.height*.4+190,z+200);camera.zoom=id==='cathedral'?.7:1.3;camera.updateProjectionMatrix();controls.update();}
   let hovered=null,validatePlacement=()=>null,lastSignal='';
   const placementRay=new THREE.Raycaster();
-  function refreshPreviews(){for(const group of previews.children)colorPreview(group,{hovered:group.userData.zone===hovered,invalid:!!validatePlacement(selected,group.userData.zone)});}
-  const cars=[];
+  function refreshPreviews(){for(const group of previews.children)colorPreview(group,{hovered:group.userData.intersection+":"+group.userData.zone===hovered,invalid:!!validatePlacement(selected,group.userData.zone,group.userData.intersection)});}
+  const cars=[];const traffic=createTraffic(roadFeatures);let designItems=[];
   for(let i=0;i<42;i++){
     const g=new THREE.Group(),color=['#f3ca49','#3f79d3','#ea665b','#59b5b5','#f6f0e2','#596acd'][i%6];
     box(2,1.1,4.1,0,.8,0,color,g);box(1.75,.85,2.1,0,1.65,-.2,color,g);box(1.58,.55,.05,0,1.68,-1.27,'#495f60',g);box(1.58,.55,.05,0,1.68,.88,'#495f60',g);
@@ -120,12 +122,12 @@ export function createIntersection(container, onPlace, onEvent) {
     box(1.45,.2,.07,0,.55,2.08,'#d7dce0',g);
     box(.63,.24,.08,0,.78,2.12,'#314154',g);
     box(1.6,.16,.08,0,.55,-2.1,'#b2c0ce',g);
-    for(const x of [-.68,.68])box(.43,.24,.07,x,.96,-2.09,'#e94e4c',g);
+    const brakeLights=[];for(const x of [-.68,.68]){const lamp=box(.43,.24,.07,x,.96,-2.09,'#e94e4c',g);lamp.material=lamp.material.clone();brakeLights.push(lamp);}
     box(.4,.15,.05,-.65,.9,2.08,'#fff3c1',g);box(.4,.15,.05,.65,.9,2.08,'#fff3c1',g);
     const avMarker=box(.9,.12,.9,0,2.15,-.2,'#7bbdc0',g);avMarker.visible=false;
-    const site=INTERSECTIONS[Math.floor(i/14)],index=i%14,axis=index<9?'x':'z',origin=site.origin[axis==='x'?0:1],p=origin+(axis==='x'?-105+index*24:-50+(index-9)*22),lane=i%2?2.2:-2.2;
-    g.rotation.y=axis==='x'?Math.PI/2:Math.PI;scene.add(g);cars.push({g,site,axis,p,lane,originalLane:lane,speed:6+rng()*2,velocity:0,avMarker});
+    const vehicle=traffic.vehicles[i];g.rotation.y=vehicle.pose.angle;scene.add(g);cars.push({g,avMarker,brakeLights});
   }
+  const collision=createCollisionPreview(scene,cars.map(car=>car.g));
   const pedestrians=[];
   for(let i=0;i<16;i++){
     const g=new THREE.Group();box(.5,1,.4,0,.95,0,['#ce8653','#4d7770','#e5d7b3','#899aad'][i%4],g);
@@ -142,40 +144,38 @@ export function createIntersection(container, onPlace, onEvent) {
     const hit=placementRay.intersectObjects(previews.children,true)[0];
     if(!hit)return null;
     let object=hit.object;while(object&&!object.userData.zone)object=object.parent;
-    return object?.userData.zone??null;
+    return object?object.userData.intersection+":"+object.userData.zone:null;
   }
   let down=null;
   function hover(clientX,clientY){
     hovered=pick(clientX,clientY);refreshPreviews();
-    for(const [name,label] of zoneLabels){const error=hovered===name?validatePlacement(selected,name):null;label.classList.toggle('invalid',!!error);label.textContent=error?'Already built or over budget':name+' · release to build here';}
+    for(const [name,label] of zoneLabels){const error=hovered===name?validatePlacement(selected,name.split(":")[1],name.split(":")[0]):null;label.classList.toggle('invalid',!!error);label.textContent=error?'Already built or over budget':intersectionById(name.split(':')[0]).name+' · '+name.split(':')[1]+' · build here';}
   }
-  renderer.domElement.addEventListener('pointerdown',e=>down=[e.clientX,e.clientY]);
-  renderer.domElement.addEventListener('pointermove',e=>hover(e.clientX,e.clientY));
-  renderer.domElement.addEventListener('pointerup',e=>{if(selected&&down&&Math.hypot(e.clientX-down[0],e.clientY-down[1])<6){const zone=pick(e.clientX,e.clientY);if(zone)onPlace(selected,zone);}});
-  container.addEventListener('dragover',e=>{e.preventDefault();hover(e.clientX,e.clientY);e.dataTransfer.dropEffect=hovered&&!validatePlacement(selected,hovered)?'copy':'none';});
+  renderer.domElement.addEventListener('pointerdown',e=>down=e.button===0?[e.clientX,e.clientY]:null);
+  renderer.domElement.addEventListener('pointercancel',()=>down=null);
+  renderer.domElement.addEventListener('pointermove',e=>{if(down&&Math.hypot(e.clientX-down[0],e.clientY-down[1])>6)down=null;hover(e.clientX,e.clientY);});
+  renderer.domElement.addEventListener('pointerup',e=>{if(selected&&down&&Math.hypot(e.clientX-down[0],e.clientY-down[1])<6){const zone=pick(e.clientX,e.clientY);if(zone)onPlace(selected,zone.split(":")[1],zone.split(":")[0]);}});
+  container.addEventListener('dragover',e=>{e.preventDefault();hover(e.clientX,e.clientY);e.dataTransfer.dropEffect=hovered&&!validatePlacement(selected,hovered.split(":")[1],hovered.split(":")[0])?'copy':'none';});
   container.addEventListener('dragleave',()=>{hovered=null;refreshPreviews();});
-  container.addEventListener('drop',e=>{e.preventDefault();hovered=null;refreshPreviews();const type=e.dataTransfer.getData('application/interlock');const zone=pick(e.clientX,e.clientY);if(type&&zone)onPlace(type,zone);else onEvent({type:'hint',message:'Drop directly onto a blue upgrade silhouette. Nothing was charged.'});});
+  container.addEventListener('drop',e=>{e.preventDefault();hovered=null;refreshPreviews();const type=e.dataTransfer.getData('application/interlock');const zone=pick(e.clientX,e.clientY);if(type&&zone)onPlace(type,zone.split(":")[1],zone.split(":")[0]);else onEvent({type:'hint',message:'Drop directly onto a blue upgrade silhouette. Nothing was charged.'});});
   function animate(now){frameId=requestAnimationFrame(animate);const realDt=Math.min((now-previous)/1000,.08);navigation.update(realDt);const dt=realDt*(paused?0:speed);previous=now;elapsed+=dt;
     const signals=signalState(elapsed,settings.green),xGreen=signals.penn==='green',zGreen=signals.cross==='green';
     const signalKey=`${signals.penn}/${signals.cross}/${signals.remaining}/${paused}`;
     if(signalKey!==lastSignal){lastSignal=signalKey;onEvent({type:'signals',...signals,paused});}
     signalLamps.forEach(({lamp,axis,index})=>{const state=axis==='x'?signals.penn:signals.cross;const lit=index===({red:0,amber:1,green:2}[state]);const c=lit?[0xff493e,0xffbf35,0x45ed99][index]:0x172231;lamp.material.color.setHex(c);lamp.material.emissive.setHex(lit?c:0);lamp.scale.setScalar(lit?1.12:1);});
-    for(const car of cars){if(!car.g.visible)continue;const green=car.axis==='x'?xGreen:zGreen,dir=car.axis==='x'?1:-1,origin=car.site.origin[car.axis==='x'?0:1],stop=origin+(car.axis==='x'?-17:17);
-      const ahead=cars.some(other=>other!==car&&other.g.visible&&other.site.id===car.site.id&&other.axis===car.axis&&other.lane===car.lane&&(other.p-car.p)*dir>0&&(other.p-car.p)*dir<7);
-      const distanceToStop=(stop-car.p)*dir;
-      const redStop=!green&&distanceToStop>=0&&distanceToStop<=car.speed*dt+.15;
-      if(redStop&&!ahead)car.p=stop;
-      car.velocity=(ahead||redStop)?0:car.speed*dir;car.p+=car.velocity*dt;
-      if(car.axis==='x'&&car.p>origin+110)car.p=origin-110;if(car.axis==='z'&&car.p<origin-60)car.p=origin+60;
-      const route=roadPoint(roadFeatures,car.axis==='x'?car.site.primaryRoad:car.site.id===DEFAULT_INTERSECTION&&car.p>0?'Schenley Drive':car.site.crossRoad,car.axis,car.p,car.lane);
-      if(route){car.g.position.set(route.x,.25,route.z);car.g.rotation.y=route.angle+(car.axis==='z'?Math.PI:0);}
-    }
+    traffic.update(dt,signals,designItems);
+    cars.forEach((car,i)=>{const vehicle=traffic.vehicles[i];car.g.visible=vehicle.enabled;car.g.position.set(vehicle.pose.x,.25,vehicle.pose.z);
+      const delta=Math.atan2(Math.sin(vehicle.pose.angle-car.g.rotation.y),Math.cos(vehicle.pose.angle-car.g.rotation.y));car.g.rotation.y+=delta*Math.min(1,dt*9);
+      car.brakeLights.forEach(lamp=>{lamp.material.emissive.setHex(vehicle.braking?0xff1608:0x000000);lamp.material.emissiveIntensity=vehicle.braking?2:0;});
+
+    });
+    renderer.domElement.dataset.incident=collision.update(dt,eventsVisible);
     pedestrians.forEach((p,i)=>{p.p+=dt*(.7+i%3*.15);if(p.p>75)p.p=-75;const route=roadPoint(roadFeatures,'Forbes Avenue','x',p.p,p.side);if(route)p.g.position.set(route.x,.28,route.z);p.legs.forEach((leg,j)=>leg.rotation.x=Math.sin(elapsed*7+i+j*Math.PI)*.3);});
-    // Detect short following gaps from animated actors; this overlay is a preview, not Monte Carlo output.
-    if(elapsed-lastEvent>8){for(const a of cars){if(!a.g.visible)continue;const b=cars.find(b=>b!==a&&b.g.visible&&a.site.id===b.site.id&&a.axis===b.axis&&a.lane===b.lane&&(b.p-a.p)*Math.sign(a.velocity)>0&&Math.abs(b.p-a.p)<12&&Math.abs(a.velocity)>Math.abs(b.velocity)+1);if(b){const ttc=(Math.abs(b.p-a.p)-4.1)/(Math.abs(a.velocity)-Math.abs(b.velocity));if(ttc>0&&ttc<1.5){lastEvent=elapsed;eventTime=elapsed;halo.position.copy(a.g.position);halo.position.y=.5;if(eventsVisible)onEvent({type:'near-miss',ttc:ttc.toFixed(1)});break;}}}}
+    // Following-gap marker belongs only to the animated preview.
+    if(elapsed-lastEvent>8){for(const a of traffic.vehicles){if(!a.enabled||a.speed<1)continue;const b=traffic.vehicles.find(b=>b!==a&&b.enabled&&b.route===a.route&&b.s>a.s&&b.s-a.s<15&&a.speed>b.speed+1);if(b){const ttc=(b.s-a.s-4.5)/(a.speed-b.speed);if(ttc>0&&ttc<1.5){lastEvent=elapsed;eventTime=elapsed;halo.position.set(a.pose.x,.5,a.pose.z);if(eventsVisible)onEvent({type:'near-miss',ttc:ttc.toFixed(1)});break;}}}}
     halo.visible=eventsVisible&&elapsed-eventTime<2;halo.scale.setScalar(1+Math.sin(elapsed*7)*.08);
     controls.update();
-    for(const [name,label] of zoneLabels){label.hidden=!selected||hovered!==name;if(!label.hidden){const {x,z}=placementFor(selected,name,activeIntersection);const p=new THREE.Vector3(x,selected==='signal'?8:1,z).project(camera);label.style.left=((p.x+1)*container.clientWidth/2)+'px';label.style.top=((1-p.y)*container.clientHeight/2)+'px';}}
+    for(const [name,label] of zoneLabels){label.hidden=!selected||hovered!==name;if(selected){const {x,z}=placementFor(selected,name.split(":")[1],name.split(":")[0]);const p=new THREE.Vector3(x,selected==='signal'?8:1,z).project(camera);label.dataset.screenX=((p.x+1)*container.clientWidth/2).toFixed(2);label.dataset.screenY=((1-p.y)*container.clientHeight/2).toFixed(2);label.style.left=((p.x+1)*container.clientWidth/2)+'px';label.style.top=((1-p.y)*container.clientHeight/2)+'px';}}
     for(const landmark of landmarks){const p=new THREE.Vector3(landmark.point[0],landmark.height+5,landmark.point[1]).project(camera);landmark.label.hidden=!buildings.visible||Math.abs(p.x)>1||Math.abs(p.y)>1||p.z>1;landmark.label.style.left=((p.x+1)*container.clientWidth/2)+'px';landmark.label.style.top=((1-p.y)*container.clientHeight/2)+'px';}
     const compass=container.parentElement.querySelector('.north-arrow svg');
     if(compass){const origin=new THREE.Vector3(0,0,0).project(camera),north=new THREE.Vector3(-Math.sin(map.rotation)*20,0,-Math.cos(map.rotation)*20).project(camera);const angle=Math.atan2((north.x-origin.x)*container.clientWidth,(north.y-origin.y)*container.clientHeight)*180/Math.PI-45;compass.style.transform=`rotate(${angle}deg)`;}
@@ -185,20 +185,19 @@ export function createIntersection(container, onPlace, onEvent) {
   function clear(group){for(const child of [...group.children])disposeUpgrade(child);}
   return {
     frameCampus, focusLandmark,
+    previewCollision(){focusIntersection(false);camera.zoom=2.3;camera.updateProjectionMatrix();collision.start();},
     setNavigation(mode){navigation.setMode(mode);},holdNavigation(action,active){navigation.hold(action,active);},nudgeNavigation(action){navigation.nudge(action);},
-    setIntersection(id){if(!intersectionById(id))return;activeIntersection=id;renderer.domElement.dataset.intersection=id;focusIntersection(false);this.setTool(selected);},
     previewPlacement: hover,
-    placeAt(type,x,y){hovered=null;refreshPreviews();const zone=pick(x,y);if(zone)onPlace(type,zone);else onEvent({type:'hint',message:'Drop directly onto a blue upgrade silhouette. Nothing was charged.'});},
+    placeAt(type,x,y){hovered=null;refreshPreviews();const zone=pick(x,y);if(zone)onPlace(type,zone.split(":")[1],zone.split(":")[0]);else onEvent({type:'hint',message:'Drop directly onto a blue upgrade silhouette. Nothing was charged.'});},
     cancelPlacement(){hovered=null;refreshPreviews();},
     setPlacementValidator(fn){validatePlacement=fn;},
-    setTool(type){if(type&&(navigation.mode==='street'||camera.zoom<.6))focusIntersection(false);selected=type;hovered=null;clear(previews);if(type){for(const zone of APPROACHES)previews.add(createUpgrade(type,zone,{preview:true,intersection:activeIntersection}));refreshPreviews();}renderer.domElement.style.cursor=type?'crosshair':'grab';},
+    setTool(type){selected=type;hovered=null;clear(previews);if(type){for(const site of INTERSECTIONS)for(const zone of APPROACHES)previews.add(createUpgrade(type,zone,{preview:true,intersection:site.id}));refreshPreviews();}renderer.domElement.style.cursor=type?'crosshair':'grab';},
     setUpgrades(items){
-      signalLamps.splice(permanentSignalCount);clear(upgrades);
-      cars.forEach(car=>{const diet=items.some(i=>i.type==='diet'&&(i.intersection||DEFAULT_INTERSECTION)===car.site.id&&((car.axis==='x'&&['east','west'].includes(i.zone))||(car.axis==='z'&&['north','south'].includes(i.zone))));car.lane=diet?2.2:car.originalLane;});
+      designItems=items;signalLamps.splice(permanentSignalCount);clear(upgrades);
       for(const item of items){const group=createUpgrade(item.type,item.zone,{intersection:item.intersection||DEFAULT_INTERSECTION});upgrades.add(group);if(item.type==='signal')group.traverse(lamp=>{if(lamp.userData.signalIndex!==undefined)signalLamps.push({lamp,axis:placementFor(item.type,item.zone,item.intersection||DEFAULT_INTERSECTION).axis,index:lamp.userData.signalIndex});});}
       refreshPreviews();
     },
-    setPaused(value){paused=value;},setSpeed(value){speed=value;},setSettings(value){settings={...value};cars.forEach((car,i)=>{car.g.visible=(i%14)<Math.max(3,Math.ceil(value.demand/1600*14));car.avMarker.visible=(i*7%100)<value.av;});},
+    setPaused(value){paused=value;},setSpeed(value){speed=value;},setSettings(value){settings={...value};cars.forEach((car,i)=>{traffic.vehicles[i].enabled=(i%14)<Math.max(3,Math.ceil(value.demand/1600*14));car.g.visible=traffic.vehicles[i].enabled;car.avMarker.visible=(i*7%100)<value.av;});},
     toggleLayer(name,value){if(name==='buildings')buildings.visible=value;if(name==='events')eventsVisible=value;if(name==='pedestrians')pedestrians.forEach(p=>p.g.visible=value);},
     view:focusIntersection,
     zoom(amount){if(navigation.mode==='street')navigation.nudge(amount>1?'forward':'back');else{camera.zoom=THREE.MathUtils.clamp(camera.zoom*amount,.1,5);camera.updateProjectionMatrix();}},

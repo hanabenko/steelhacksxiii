@@ -1,6 +1,6 @@
 # Interlock — Pittsburgh intersection sandbox
 
-A Three.js frontend for exploring the **University of Pittsburgh campus between Forbes and Fifth avenues**, with one shared design spanning **Forbes/Bigelow, Fifth/Bigelow, and Forbes/Bouquet**. All app code, data, dependencies, and tests live in `frontend`. Development branch: `three_js_frontend`.
+A Three.js frontend for exploring the **University of Pittsburgh campus between Forbes and Fifth avenues**, with one shared design spanning **Forbes/Bigelow, Fifth/Bigelow, and Forbes/Bouquet**. All app code, data, dependencies, and tests live in `frontend`. Development branch: `main`.
 
 ## Run
 
@@ -16,8 +16,8 @@ Open http://127.0.0.1:5173. `npm run build` produces `frontend/dist`; `npm run p
 
 ## What works
 
-- **Orbit / Pan / Street** navigation: Pan uses left-drag to translate the view. Street uses a perspective camera at the active junction; drag to look, WASD to move, Q/E to descend/rise, and Shift to move faster. Movement is independent of traffic pause and stays enabled when the UI is hidden. The on-screen direction/elevation pad supports touch and keyboard activation. Camera movement is not clamped to the map crop; only the downloaded campus has geometry.
-- Select **Editing** in the campus bar or Design panel to switch intersections. All placements persist together, with a shared $100,000 budget. **Run all 3** uses the entire design, and the results selector compares all sites or each intersection separately.
+- **Orbit / Pan / Street** navigation: Pan is the default: left-drag to translate the view, right-drag to orbit, scroll to zoom. Street starts at the current camera target; left-drag to look, right-drag to move, wheel to walk smoothly, WASD to move, Q/E to descend/rise, and Shift to move faster. Movement is independent of traffic pause and stays enabled when the UI is hidden. The on-screen direction/elevation pad supports touch and keyboard activation. Camera movement is not clamped to the map crop; only the downloaded campus has geometry.
+- There is no editing-site selector: select a tool and click or drop on any of the twelve exact blue footprints across all three intersections. Mouse navigation keeps the tool selected. Named approach groups in Design provide keyboard placement. All placements persist together, with a shared $100,000 budget. **Run all 3** uses the entire design, and the results selector compares all sites or each intersection separately.
 
 - Full-screen 3D workspace with a blue, coral, and yellow Interlock identity. The bottom dock opens Design, Simulate, and Impact panels only when needed; the canvas never shrinks. Close a panel with its X, its dock button, or Escape. Keyboard focus returns to the opener.
 - Larger Cantarell typography, stronger contrast, and infrastructure cards with a description, benefit, tradeoff, and per-approach price.
@@ -30,7 +30,7 @@ Open http://127.0.0.1:5173. `npm run build` produces `frontend/dist`; `npm run p
 - Orbitable/zoomable 3D intersection with real OSM road/path centerlines, building footprints and 3D building parts, shadows, moving cars, walking pedestrians, traffic signal phases, and short-following-gap TTC markers.
 - Drag an upgrade onto a highlighted approach, or select a tool and press an approach button. Escape deselects. Approach names refer to the scene's local axes.
 - Raised crosswalks, bike lanes, curb extensions, smart signals, and road diets; rendered placements, duplicate prevention, $100,000 budget, undo, reset, and original/design comparison.
-- Adjustable traffic demand, signal split, AV adoption, and Monte Carlo trial count. AVs get a teal roof marker in the preview. Road diets consolidate preview cars into one lane.
+- Adjustable traffic demand, signal split, AV adoption, and Monte Carlo trial count. AVs get a teal roof marker in the preview. Crosswalks, curbs, and road diets reduce approach speed in the illustrative preview; lane rerouting remains a backend concern.
 - Before/after speed, delay, throughput, conflict proxy, pedestrian-access index, street score, and three objectives. Changing the design invalidates old results.
 - Export a JSON scenario with settings, placements, budget, seed, engine, and results.
 - Keyboard placement, responsive layouts, reduced-motion support, and a non-WebGL fallback that retains editing and simulation controls.
@@ -140,3 +140,9 @@ Units: risk proxy / 1,000 vehicles; speed mph; delay seconds/vehicle; per-site t
 - `src/data/intersection.json` — attributed geometry extract.
 - `tests/*.test.js` — offline Node tests.
 - `tests/browser/workbench.spec.js` — Playwright interaction tests.
+
+## Traffic preview and collision replay
+
+Campus traffic follows longer OSM-centerline routes: eastbound Forbes, westbound Fifth, both Bigelow directions, southbound Bouquet, and a curved turn onto Forbes. Bounded acceleration/braking, speed-dependent following gaps, red/amber stopping, turn slowdown and brake lights replace abrupt stop/start loops. This is an illustrative frontend model, not measured driving behavior or calibrated SUMO.
+
+**Navigate campus > Preview collision + fire** stages two demonstration vehicles approaching, impacting, sliding, and emitting animated flames/smoke. The replay clears after 12 simulation seconds; pause, speed and the Events layer apply. It never changes budget, score or risk estimates and does not imply that ordinary crashes cause fires.

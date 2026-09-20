@@ -6,10 +6,10 @@ export function createWalkthrough({openPanel,getState}) {
   const $=s=>card.querySelector(s);
   let step=-1,highlight=null;
   const steps=[
-    {title:'Welcome to your street lab',body:'Watch the signals cycle from green to amber to red. Cars stop at red lights. Drag the scene to orbit, or use Top down to plan your layout.',panel:null,target:'.signal-hud'},
+    {title:'Welcome to your street lab',body:'Watch the signals cycle from green to amber to red. Cars stop at red lights. Left-drag to move around all three sites, right-drag to orbit, or use Top down to plan.',panel:null,target:'.signal-hud'},
     {title:'Your budget is $100,000',body:'Every upgrade has a price per approach. Money is deducted only when you place it. Undo refunds the last upgrade; Reset refunds your whole design.',panel:'design',target:'.budget-card'},
-    {title:'Place your first upgrade',body:'Drag the raised crosswalk card onto a blue upgrade silhouette. Or click the card, then choose an approach. This changes your actual design—you can undo it anytime.',panel:'design',target:'[data-tool="crosswalk"]',gate:s=>s.count>0,pending:'Place an upgrade to continue.'},
-    {title:'Run a fair comparison',body:'Choose traffic demand, signal timing, and AV adoption, then click Run simulation. Before is the original street; After includes your design. Both use the same sampled traffic demand.',panel:'simulation',target:'#run',gate:s=>!!s.result,pending:'Run the simulation to continue.'},
+    {title:'Place your first upgrade',body:'Drag the raised crosswalk card onto a blue upgrade silhouette. Or select the card and click a blue shape at any of the three sites. Design also has keyboard approach buttons. This changes your actual design—you can undo it anytime.',panel:'design',target:'[data-tool="crosswalk"]',gate:s=>s.count>0,pending:'Place an upgrade to continue.'},
+    {title:'Run a fair comparison',body:'Choose traffic demand, signal timing, and AV adoption, then click Run simulation to test all three sites together. Before is the original street; After includes your design. Both use the same sampled traffic demand.',panel:'simulation',target:'#run',gate:s=>!!s.result,pending:'Run the simulation to continue.'},
     {title:'See what changed',body:'Compare Before and After, then read Change: negative delay or conflict values are improvements; positive throughput or access values are improvements. Use Compare with original to toggle the 3D design. These local estimates are experimental, not crash forecasts.',panel:'results',target:'.metric-table'},
   ];
   function clearHighlight(){highlight?.classList.remove('tour-highlight');highlight=null;}
