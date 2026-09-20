@@ -1,14 +1,2 @@
-import fs from 'node:fs';
-const xml=fs.readFileSync(new URL('../osm-source.xml',import.meta.url),'utf8');
-const attr=s=>Object.fromEntries([...s.matchAll(/([\w:]+)="([^"]*)"/g)].map(m=>[m[1],m[2].replaceAll('&amp;','&')]));
-const nodes=new Map([...xml.matchAll(/<node\s([^>]+)>|<node\s([^>]+)\/>/g)].map(m=>{const a=attr(m[1]||m[2]);return[a.id,{lat:+a.lat,lon:+a.lon}];}));
-const ways=[...xml.matchAll(/<way\s([^>]+)>([\s\S]*?)<\/way>/g)].map(m=>({id:attr(m[1]).id,tags:Object.fromEntries([...m[2].matchAll(/<tag\s([^>]+)\/>/g)].map(t=>{const a=attr(t[1]);return[a.k,a.v];})),refs:[...m[2].matchAll(/<nd ref="(\d+)"\/>/g)].map(n=>n[1])}));
-const center=nodes.get('105894148');
-const project=n=>[(n.lon-center.lon)*111320*Math.cos(center.lat*Math.PI/180),-(n.lat-center.lat)*111320];
-const penn=ways.find(w=>w.id==='11829277'), origin=penn.refs.indexOf('105894148'), next=project(nodes.get(penn.refs[origin+3]));
-const angle=Math.atan2(next[1],next[0]);
-const local=n=>{const [x,z]=project(n);return[+(x*Math.cos(angle)+z*Math.sin(angle)).toFixed(2),+(-x*Math.sin(angle)+z*Math.cos(angle)).toFixed(2)];};
-const features=ways.filter(w=>w.tags.building||(['Penn Avenue','21st Street'].includes(w.tags.name)&&w.tags.highway)).map(w=>({...w,points:w.refs.map(r=>nodes.get(r)).filter(Boolean).map(local)})).filter(w=>w.points.some(([x,z])=>Math.abs(x)<130&&Math.abs(z)<100)).map(({refs,...w})=>w);
-fs.mkdirSync(new URL('../src/data/',import.meta.url),{recursive:true});
-fs.writeFileSync(new URL('../src/data/intersection.json',import.meta.url),JSON.stringify({name:'Penn Avenue & 21st Street',center,rotation:angle,source:'OpenStreetMap contributors',license:'ODbL-1.0',sourceUrl:'https://www.openstreetmap.org/node/105894148',retrieved:'2026-09-19',notes:'Road centerlines and building footprints from OSM. Widths, heights, sidewalks, signals, demand and behavior are illustrative. OSM tags may lag street changes.',features},null,2));
-console.log(`Extracted ${features.length} real features at ${center.lat}, ${center.lon}`);
+// Kept as the documented regeneration entry point for the active campus map.
+import './extract-campus.mjs';

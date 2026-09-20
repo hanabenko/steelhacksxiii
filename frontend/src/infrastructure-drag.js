@@ -1,13 +1,13 @@
 /** Pointer-based drag avoids native HTML drag inconsistencies and supports touch handles. */
-export function installInfrastructureDrag({container,select,preview,place,cancel}) {
+export function installInfrastructureDrag({container,selector='[data-tool]',select,preview,place,cancel}) {
   let drag=null,suppressClick=false;
-  container.querySelectorAll('[data-tool]').forEach(card=>{card.draggable=false;});
+  container.querySelectorAll(selector).forEach(card=>{card.draggable=false;});
   container.addEventListener('pointerdown',event=>{
-    const card=event.target.closest('[data-tool]');
+    const card=event.target.closest(selector);
     if(!card||event.button!==0)return;
     // Keep touch scrolling on the card; the grip is the touch drag handle.
-    if(event.pointerType==='touch'&&!event.target.closest('.drag-grip'))return;
-    drag={card,type:card.dataset.tool,id:event.pointerId,x:event.clientX,y:event.clientY,active:false};
+    if(event.pointerType==='touch'&&!card.hasAttribute('data-quick-tool')&&!event.target.closest('.drag-grip'))return;
+    drag={card,type:card.dataset.tool||card.dataset.quickTool,id:event.pointerId,x:event.clientX,y:event.clientY,active:false};
     card.setPointerCapture(event.pointerId);
   });
   container.addEventListener('pointermove',event=>{

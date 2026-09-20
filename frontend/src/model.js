@@ -1,3 +1,4 @@
+import { INTERSECTIONS, DEFAULT_INTERSECTION, intersectionById } from './intersections.js';
 export const BUDGET = 100000;
 export const TOOLS = [
   { id: 'crosswalk', name: 'Raised crosswalk', detail: 'An elevated crossing slows approaching cars and makes people easier to see.', benefit: 'Pedestrian priority', tradeoff: 'May add vehicle delay', cost: 12000, icon: 'Footprints' },
@@ -9,12 +10,12 @@ export const TOOLS = [
 export const DEFAULT_SETTINGS = { demand: 800, green: 35, av: 0, runs: 100 };
 export const ZONES = ['north', 'east', 'south', 'west'];
 export function costOf(items) { return items.reduce((sum, item) => sum + (TOOLS.find(t => t.id === item.type)?.cost ?? 0), 0); }
-export function addUpgrade(items, type, zone) {
+export function addUpgrade(items, type, zone, intersection = DEFAULT_INTERSECTION) {
   const tool = TOOLS.find(t => t.id === type);
-  if (!tool || !ZONES.includes(zone)) return { error: 'Choose a valid tool and intersection approach.' };
-  if (items.some(i => i.type === type && i.zone === zone)) return { error: `${tool.name} is already on this approach.` };
+  if (!tool || !ZONES.includes(zone) || !intersectionById(intersection)) return { error: 'Choose a valid tool and intersection approach.' };
+  if (items.some(i => i.type === type && i.zone === zone && (i.intersection || DEFAULT_INTERSECTION) === intersection)) return { error: `${tool.name} is already on this approach.` };
   if (costOf(items) + tool.cost > BUDGET) return { error: 'Not enough budget. Undo an upgrade to free up funds.' };
-  return { items: [...items, { type, zone }] };
+  return { items: [...items, { type, zone, intersection }] };
 }
 export function validateSettings(settings) {
   for (const [key, min, max] of [['demand',200,1600],['green',20,60],['av',0,100],['runs',10,1000]]) {
@@ -24,7 +25,7 @@ export function validateSettings(settings) {
 }
 export function random(seed) { let a = seed >>> 0; return () => { a += 0x6D2B79F5; let t = a; t = Math.imul(t ^ t >>> 15, t | 1); t ^= t + Math.imul(t ^ t >>> 7, t | 61); return ((t ^ t >>> 14) >>> 0) / 4294967296; }; }
 // Transparent, uncalibrated surrogate: paired demand samples, not SUMO or crash prediction.
-export function simulate(items, settings = DEFAULT_SETTINGS, seed = 42) {
+export function simulate(items, settings = DEFAULT_SETTINGS, seed = 42, {includeTrials=false} = {}) {
   validateSettings(settings);
   const rng = random(seed), count = type => items.filter(i => i.type === type).length;
   const cross = count('crosswalk'), bike = count('bike'), curb = count('curb'), signal = count('signal'), diet = count('diet');
@@ -46,8 +47,26 @@ export function simulate(items, settings = DEFAULT_SETTINGS, seed = 42) {
   const reduction = (1-after.risk.mean/before.risk.mean)*100;
   const retained = after.throughput.mean/before.throughput.mean*100;
   const score = Math.round(Math.min(100,Math.max(0,30+reduction*.65+(after.access.mean-48)*.5-Math.max(0,95-retained))));
-  return { before, after, reduction, retained, score, seed, runs:settings.runs, engine:'local-surrogate-v1', samples:samples.after.map(r=>r.risk) };
+  return { before, after, reduction, retained, score, seed, runs:settings.runs, engine:'local-surrogate-v1', samples:samples.after.map(r=>r.risk), ...(includeTrials?{trials:samples}:{}) };
 }
 export function exportScenario(items, settings, result) {
-  return { schemaVersion:1, intersection:'penn-21st-pittsburgh', createdAt:new Date().toISOString(), budget:BUDGET, spent:costOf(items), upgrades:items.map(i=>({...i})), settings:{...settings}, result, disclaimer:'Uncalibrated frontend surrogate. Not a crash forecast. See README for SUMO integration.' };
+  return { schemaVersion:2, intersection:'pitt-campus-network', intersections:INTERSECTIONS.map(({id,name,sourceUrl})=>({id,name,sourceUrl})), createdAt:new Date().toISOString(), budget:BUDGET, spent:costOf(items), upgrades:items.map(i=>({...i,intersection:i.intersection||DEFAULT_INTERSECTION})), settings:{...settings}, result, disclaimer:'Uncalibrated frontend surrogate. Not a crash forecast. See README for SUMO integration.' };
+}
+
+/** Paired multi-site estimates. Shared demand draws preserve covariance; no routing/spillback physics. */
+export function simulateNetwork(items, settings=DEFAULT_SETTINGS, seed=42){
+  for(const item of items)if(!intersectionById(item.intersection)||!TOOLS.some(t=>t.id===item.type)||!ZONES.includes(item.zone))throw new Error('Invalid network upgrade.');
+  const sites=INTERSECTIONS.map(site=>({id:site.id,name:site.name,...simulate(items.filter(item=>(item.intersection||DEFAULT_INTERSECTION)===site.id),settings,seed,{includeTrials:true})}));
+  const combined={};
+  for(const phase of ['before','after']){
+    combined[phase]={};
+    for(const metric of ['risk','speed','delay','throughput','access']){
+      const values=Array.from({length:settings.runs},(_,i)=>sites.reduce((sum,site)=>sum+site.trials[phase][i][metric],0)/(metric==='throughput'?1:sites.length));
+      const mean=values.reduce((a,b)=>a+b,0)/values.length;const variance=values.reduce((a,b)=>a+(b-mean)**2,0)/Math.max(1,values.length-1);
+      combined[phase][metric]={mean,ci:1.96*Math.sqrt(variance/values.length)};
+    }
+  }
+  const {before,after}=combined,reduction=(1-after.risk.mean/before.risk.mean)*100,retained=after.throughput.mean/before.throughput.mean*100;
+  const score=Math.round(Math.min(100,Math.max(0,30+reduction*.65+(after.access.mean-48)*.5-Math.max(0,95-retained))));
+  return {before,after,reduction,retained,score,seed,runs:settings.runs,engine:'local-network-surrogate-v1',intersections:sites.map(({trials,...site})=>site),aggregation:'Equal-demand mean across three intersections; throughput sums intersection passages, not unique vehicles. Shared paired demand trials. No rerouting or queue spillback.'};
 }

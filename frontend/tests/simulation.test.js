@@ -1,20 +1,22 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { runSimulation, validateResult } from '../src/simulation.js';
-import { DEFAULT_SETTINGS, simulate } from '../src/model.js';
+import { DEFAULT_SETTINGS, simulate, simulateNetwork } from '../src/model.js';
 import fs from 'node:fs';
 
 test('local mode does not call the network', async () => {
   const result = await runSimulation([], DEFAULT_SETTINGS, { fetchImpl: () => assert.fail('Unexpected network request') });
-  assert.equal(result.engine, 'local-surrogate-v1');
+  assert.equal(result.engine, 'local-network-surrogate-v1');
 });
 test('backend receives reproducible scenario and engine provenance is preserved', async () => {
-  const expected = { ...simulate([]), engine: 'sumo-test-fixture' };
+  const expected = { ...simulateNetwork([]), engine: 'sumo-test-fixture' };
   const result = await runSimulation([], DEFAULT_SETTINGS, { endpoint: 'http://localhost:8000/simulate', fetchImpl: async (url, options) => {
     assert.equal(url, 'http://localhost:8000/simulate');
     assert.equal(options.method, 'POST');
     assert.equal(JSON.parse(options.body).seed, 42);
-    assert.equal(JSON.parse(options.body).intersection, 'penn-21st-pittsburgh');
+    assert.equal(JSON.parse(options.body).schemaVersion, 2);
+    assert.equal(JSON.parse(options.body).intersections.length, 3);
+    assert.equal(JSON.parse(options.body).intersection, 'pitt-campus-network');
     return { ok: true, json: async () => expected };
   } });
   assert.equal(result, expected);
@@ -30,8 +32,8 @@ test('real map extract retains source, intersection coordinates, and valid geome
   assert.equal(map.license, 'ODbL-1.0');
   assert.match(map.sourceUrl, /openstreetmap.org/);
   assert.ok(map.center.lat > 40.4 && map.center.lat < 40.5);
-  assert.ok(map.features.some(f => f.tags.name === 'Penn Avenue' && f.tags.highway));
-  assert.ok(map.features.some(f => f.tags.name === '21st Street' && f.tags.highway));
+  assert.ok(map.features.some(f => f.tags.name === 'Forbes Avenue' && f.tags.highway));
+  assert.ok(map.features.some(f => f.tags.name === 'Bigelow Boulevard' && f.tags.highway));
   assert.ok(map.features.filter(f => f.tags.building).length > 0);
   for (const f of map.features) for (const p of f.points) assert.ok(p.length === 2 && p.every(Number.isFinite));
 });

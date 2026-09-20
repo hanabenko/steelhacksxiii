@@ -15,7 +15,7 @@ export function createArchitecture(parent, material) {
     batches.get(color).push(transform.matrix.clone());
   }
   return {
-    add(points, height, accent, index) {
+    add(points, height, accent, index, {storefront=true}={}) {
       const ring = points.slice();
       if (ring.length > 1 && ring[0][0] === ring.at(-1)[0] && ring[0][1] === ring.at(-1)[1]) ring.pop();
       const area = ring.reduce((sum, [x,z], i) => { const next = ring[(i+1)%ring.length]; return sum + x*next[1]-next[0]*z; },0);
@@ -48,7 +48,7 @@ export function createArchitecture(parent, material) {
       }
       // Choose a street-facing facade by proximity to the two crossing centerlines.
       const frontage=edges.filter(e=>e.length>5).sort((a,b)=>Math.min(Math.abs(a.x+a.tx*a.length/2),Math.abs(a.z+a.tz*a.length/2))-Math.min(Math.abs(b.x+b.tx*b.length/2),Math.abs(b.z+b.tz*b.length/2)))[0];
-      if(frontage) {
+      if(frontage && storefront) {
         const e=frontage;
         const at=(distance,y,offset=0)=>[e.x+e.tx*distance+e.nx*offset,y,e.z+e.tz*distance+e.nz*offset];
         const bays=Math.max(1,Math.floor(e.length/4.2));

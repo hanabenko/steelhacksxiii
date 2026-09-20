@@ -53,7 +53,7 @@ test('budget constraint is visible and export contains the scenario',async({page
   await page.getByRole('button',{name:'Export scenario'}).click();
   const download=await downloaded;
   const stream=await download.createReadStream();let content='';for await(const chunk of stream)content+=chunk;
-  const scenario=JSON.parse(content);expect(scenario.spent).toBe(84000);expect(scenario.upgrades).toHaveLength(3);expect(scenario.intersection).toBe('penn-21st-pittsburgh');
+  const scenario=JSON.parse(content);expect(scenario.spent).toBe(84000);expect(scenario.upgrades).toHaveLength(3);expect(scenario.intersection).toBe('pitt-campus-network');
 });
 test('settings invalidate results and provenance remains accessible',async({page})=>{
   await page.goto('/');await openPanel(page,'simulation');await page.locator('#run').click();await expect(page.locator('#result-status')).toHaveText('100 RUNS');
@@ -72,7 +72,7 @@ test('drag and drop places infrastructure on a raycast approach',async({page})=>
   await page.getByRole('button',{name:'Top down'}).click();
   await openPanel(page,'design');
   const bounds=await page.locator('#scene canvas').boundingBox();
-  await page.locator('[data-tool="crosswalk"]').dragTo(page.locator('#scene canvas'),{targetPosition:{x:bounds.width/2+bounds.height*23/200,y:bounds.height/2}});
+  await page.locator('[data-tool="crosswalk"]').dragTo(page.locator('#scene canvas'),{targetPosition:{x:bounds.width/2+bounds.height*12/200,y:bounds.height/2}});
   await expect(page.locator('#budget')).toHaveText('$88,000');
   await expect(page.locator('body')).not.toHaveClass(/is-dragging/);
 });
@@ -143,7 +143,7 @@ test('remove refunds the upgrade and invalidates comparison',async({page})=>{
   await page.goto('/');await openPanel(page,'design');await page.locator('[data-tool="bike"]').click();
   await page.getByRole('button',{name:'North',exact:true}).click();
   await page.locator('#placed-summary').click();
-  await page.getByRole('button',{name:'Remove Protected bike lane from north'}).click();
+  await page.getByRole('button',{name:'Remove Protected bike lane from north at Forbes × Bigelow'}).click();
   await expect(page.locator('#budget')).toHaveText('$100,000');
   await expect(page.locator('#budget-receipt')).toContainText('$24,000 refunded');
 });
@@ -158,4 +158,104 @@ test('mobile walkthrough can be completed without covering required controls',as
   await page.locator('#tour-next').click();
   await expect(page.locator('.walkthrough')).not.toBeVisible();
   expect(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth)).toBe(true);
+});
+
+test('quick tray targets the crosswalk itself and launches a comparison',async({page})=>{
+  await page.goto('/');await page.locator('#view-top').click();
+  const canvas=page.locator('#scene canvas');const b=await canvas.boundingBox();
+  const card=page.locator('[data-quick-tool="crosswalk"]');
+  await card.dragTo(canvas,{targetPosition:{x:b.width/2+b.height*23/200,y:b.height/2}});
+  await expect(page.locator('#budget-hud')).toHaveText('$100,000');
+  await card.dragTo(canvas,{targetPosition:{x:b.width/2+b.height*12/200,y:b.height/2}});
+  await expect(page.locator('#budget-hud')).toHaveText('$88,000');
+  await expect(page.locator('#design-panel')).not.toBeVisible();
+  await page.locator('#quick-run').click();
+  await expect(page.locator('#result-status')).toHaveText('100 RUNS');
+  await expect(page.locator('#after-risk')).not.toHaveText('—');
+});
+
+test('quick selection supports number keys, cancellation, and mobile controls',async({page})=>{
+  await page.setViewportSize({width:390,height:844});await page.goto('/');
+  await page.locator('[data-quick-tool="bike"]').click();
+  await expect(page.locator('[data-quick-tool="bike"]')).toHaveAttribute('aria-pressed','true');
+  await page.keyboard.press('Escape');await expect(page.locator('#placement-hint')).not.toBeVisible();
+  await page.keyboard.press('1');await expect(page.locator('[data-quick-tool="crosswalk"]')).toHaveAttribute('aria-pressed','true');
+  await page.keyboard.press('Escape');await page.locator('#quick-run').click();
+  await expect(page.locator('#result-status')).toHaveText('100 RUNS');
+  expect(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth)).toBe(true);
+});
+
+test('observation mode hides every overlay and keeps orbit/zoom and restoration available',async({page})=>{
+  await page.goto('/');await page.getByRole('button',{name:'Pause animation'}).click();
+  await openPanel(page,'design');await page.locator('[data-tool="crosswalk"]').click();
+  await page.getByRole('button',{name:'Hide interface',exact:true}).click();
+  await expect(page.locator('#scene canvas')).toBeVisible();
+  for(const selector of ['.header','.action-dock','.upgrade-bar','.quick-simulation','.panel','.map-controls','.signal-hud','.campus-jumps','.landmark-labels','#placement-hint']){
+    for(const element of await page.locator(selector).all())await expect(element).not.toBeVisible();
+  }
+  const before=(await page.locator('#scene canvas').screenshot()).toString('base64');
+  await page.mouse.move(720,500);await page.mouse.wheel(0,-350);
+  await expect.poll(async()=>(await page.locator('#scene canvas').screenshot()).toString('base64')).not.toBe(before);
+  await page.keyboard.press('h');await expect(page.locator('.header')).toBeVisible();
+  await expect(page.locator('#observe-toggle')).toHaveAttribute('aria-pressed','false');
+  await expect(page.locator('#placement-hint')).not.toBeVisible();
+});
+
+test('campus landmarks are anchored and reachable from the quick map navigation',async({page})=>{
+  const errors=[];page.on('pageerror',e=>errors.push(e.message));await page.goto('/');
+  for(const [id,name] of [['cathedral','Cathedral of Learning'],['towers','Litchfield Towers'],['jefes','El Jefe’s Taqueria']]){
+    await page.locator('[data-focus="'+id+'"]').click();await expect(page.locator('[data-landmark="'+id+'"]').filter({hasText:name})).toBeVisible();
+  }
+  await page.locator('#campus-view').click();await expect(page.locator('[data-landmark="cathedral"]')).toBeVisible();
+  await page.setViewportSize({width:390,height:844});await page.getByRole('button',{name:'Hide interface',exact:true}).click();await page.getByRole('button',{name:'Show interface',exact:true}).click();
+  expect(errors).toEqual([]);
+});
+
+test('corner observation toggle dismisses native dialogs and walkthroughs',async({page})=>{
+  await page.goto('/');await page.getByRole('button',{name:'Explore the data'}).click();
+  await expect(page.getByRole('dialog')).toBeVisible();await page.locator('#observe-toggle').click();
+  await expect(page.getByRole('dialog')).not.toBeVisible();await expect(page.locator('body')).toHaveClass(/observe-mode/);
+  await page.locator('#observe-toggle').click();await page.getByRole('button',{name:'Start walkthrough'}).click();
+  await expect(page.locator('.walkthrough')).toBeVisible();await page.locator('#observe-toggle').click();
+  await expect(page.locator('.walkthrough')).not.toBeVisible();await page.locator('#observe-toggle').click();
+  await expect(page.locator('.header')).toBeVisible();
+});
+
+test('three intersections keep separate placements and produce combined and per-site results',async({page})=>{
+ await page.goto('/');await openPanel(page,'design');
+ for(const id of ['pitt-forbes-bigelow','pitt-fifth-bigelow','pitt-forbes-bouquet']){
+  await page.getByLabel('Edit intersection',{exact:true}).selectOption(id);
+  if(await page.locator('[data-tool="crosswalk"]').getAttribute('aria-pressed')!=='true')await page.locator('[data-tool="crosswalk"]').click();
+  await page.getByRole('button',{name:'North',exact:true}).click();
+ }
+ await expect(page.locator('#budget')).toHaveText('$64,000');
+ await page.locator('#placed-summary').click();await expect(page.locator('#placed-list li')).toHaveCount(3);
+ await expect(page.locator('#placed-list')).toContainText('Fifth × Bigelow');await expect(page.locator('#placed-list')).toContainText('Forbes × Bouquet');
+ await openPanel(page,'simulation');await page.locator('#run').click();await expect(page.locator('#result-status')).toHaveText('100 RUNS');
+ await expect(page.locator('#result-scope')).toHaveValue('network');
+ const combined=Number(await page.locator('#after-throughput').textContent());
+ await page.locator('#result-scope').selectOption('pitt-fifth-bigelow');
+ await expect(page.locator('#aggregation-note')).toContainText('Fifth × Bigelow');
+ expect(combined).toBeGreaterThan(2*Number(await page.locator('#after-throughput').textContent()));await expect(page.locator('#change-risk')).toHaveClass(/improved/);
+ const downloaded=page.waitForEvent('download');await page.getByRole('button',{name:'Export scenario'}).click();const stream=await(await downloaded).createReadStream();let content='';for await(const chunk of stream)content+=chunk;const exported=JSON.parse(content);
+ expect(new Set(exported.upgrades.map(i=>i.intersection)).size).toBe(3);expect(exported.result.intersections).toHaveLength(3);
+ await openPanel(page,'design');await page.getByRole('button',{name:'Remove Raised crosswalk from north at Fifth × Bigelow'}).click();await expect(page.locator('#budget')).toHaveText('$76,000');await expect(page.locator('#result-scope')).toBeDisabled();
+});
+
+test('street navigation moves while traffic is paused and while interface is hidden',async({page})=>{
+ await page.goto('/');await page.getByRole('button',{name:'Pause animation'}).click();
+ await page.locator('button[data-navigation="street"]').click();const canvas=page.locator('#scene canvas');await expect(canvas).toHaveAttribute('data-navigation','street');
+ const position=()=>canvas.getAttribute('data-camera-position');const before=await position();await page.keyboard.down('w');await expect.poll(position).not.toBe(before);await page.keyboard.up('w');
+ await page.locator('#observe-toggle').click();const hiddenBefore=await position();await page.keyboard.down('d');await expect.poll(position).not.toBe(hiddenBefore);await page.keyboard.up('d');
+ await page.locator('#observe-toggle').click();const riseBefore=(await position()).split(',').map(Number)[1];await page.getByRole('button',{name:'Rise',exact:true}).focus();await page.keyboard.press('Enter');await expect.poll(async()=>Number((await position()).split(',')[1])).toBeGreaterThan(riseBefore);
+ await page.locator('button[data-navigation="pan"]').click();await expect(canvas).toHaveAttribute('data-navigation','pan');
+ const panBefore=await position();await page.mouse.move(680,450);await page.mouse.down();await page.mouse.move(830,500,{steps:8});await page.mouse.up();await expect.poll(position).not.toBe(panBefore);
+ await page.locator('#campus-view').click();await expect(canvas).toHaveAttribute('data-navigation','orbit');
+});
+
+test('mobile intersection selection and on-screen movement remain reachable',async({page})=>{
+ await page.setViewportSize({width:390,height:844});await page.goto('/');await page.getByLabel('Active intersection',{exact:true}).selectOption('pitt-fifth-bigelow');
+ await page.locator('.navigation-panel summary').click();await page.locator('button[data-navigation="street"]').click();
+ const canvas=page.locator('#scene canvas');const before=await canvas.getAttribute('data-camera-position');await page.getByRole('button',{name:'Move forward',exact:true}).focus();await page.keyboard.press('Enter');await expect.poll(()=>canvas.getAttribute('data-camera-position')).not.toBe(before);
+ await page.locator('#observe-toggle').click();await page.locator('#observe-toggle').click();expect(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth)).toBe(true);
 });

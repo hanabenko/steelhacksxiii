@@ -1,6 +1,6 @@
 # Interlock — Pittsburgh intersection sandbox
 
-A Three.js frontend for designing and comparing changes at **Penn Avenue × 21st Street** in Pittsburgh’s Strip District. All app code, data, dependencies, and tests live in `frontend`. Development branch: `three_js_frontend`.
+A Three.js frontend for exploring the **University of Pittsburgh campus between Forbes and Fifth avenues**, with one shared design spanning **Forbes/Bigelow, Fifth/Bigelow, and Forbes/Bouquet**. All app code, data, dependencies, and tests live in `frontend`. Development branch: `three_js_frontend`.
 
 ## Run
 
@@ -16,14 +16,18 @@ Open http://127.0.0.1:5173. `npm run build` produces `frontend/dist`; `npm run p
 
 ## What works
 
+- **Orbit / Pan / Street** navigation: Pan uses left-drag to translate the view. Street uses a perspective camera at the active junction; drag to look, WASD to move, Q/E to descend/rise, and Shift to move faster. Movement is independent of traffic pause and stays enabled when the UI is hidden. The on-screen direction/elevation pad supports touch and keyboard activation. Camera movement is not clamped to the map crop; only the downloaded campus has geometry.
+- Select **Editing** in the campus bar or Design panel to switch intersections. All placements persist together, with a shared $100,000 budget. **Run all 3** uses the entire design, and the results selector compares all sites or each intersection separately.
+
 - Full-screen 3D workspace with a blue, coral, and yellow Interlock identity. The bottom dock opens Design, Simulate, and Impact panels only when needed; the canvas never shrinks. Close a panel with its X, its dock button, or Escape. Keyboard focus returns to the opener.
 - Larger Cantarell typography, stronger contrast, and infrastructure cards with a description, benefit, tradeoff, and per-approach price.
 - A five-step **Walkthrough** opens the relevant panels and waits for a real placement and simulation before moving on. Replay it from the header; Skip/Escape closes it without resetting your design.
 - Larger animated traffic lights and a live two-street signal display with countdown. Amber lasts three seconds and each transition has a one-second all-red clearance. Pause/speed controls affect both lights and traffic.
-- Pointer-based drag editing with labeled approach targets, a placement preview, invalid-placement feedback, and Escape cancellation. Touch users can drag using the card’s grip or select a tool and use the approach buttons.
+- Persistent, color-coded upgrade tray with prices, remaining budget, number-key shortcuts (1–5), and a one-click Run simulation button. Drag whole tray cards on mouse or touch; detailed Design cards retain touch grips for scrolling.
+- Blue upgrade silhouettes use the exact same meshes and transforms as built infrastructure. Raycasting hits those meshes directly, with no offset circular targets. Invalid silhouettes turn red; Escape cancels. Approach buttons remain available for keyboard placement.
 - Placement receipts and a removable-upgrades list make spending and refunds explicit. The comparison table explains its baseline and shows signed changes, with improvement/tradeoff colors.
 - Stylized facade windows, shopfronts, striped awnings, roof parapets, ventilation equipment, and solar panels. Repeated architectural details use instanced meshes. Cars include glazed side windows, mirrors, round wheels, hubs, bumpers, and tail lights.
-- Orbitable/zoomable 3D intersection with real OSM centerlines and 44 building footprints, shadows, moving cars, walking pedestrians, traffic signal phases, and short-following-gap TTC markers.
+- Orbitable/zoomable 3D intersection with real OSM road/path centerlines, building footprints and 3D building parts, shadows, moving cars, walking pedestrians, traffic signal phases, and short-following-gap TTC markers.
 - Drag an upgrade onto a highlighted approach, or select a tool and press an approach button. Escape deselects. Approach names refer to the scene's local axes.
 - Raised crosswalks, bike lanes, curb extensions, smart signals, and road diets; rendered placements, duplicate prevention, $100,000 budget, undo, reset, and original/design comparison.
 - Adjustable traffic demand, signal split, AV adoption, and Monte Carlo trial count. AVs get a teal roof marker in the preview. Road diets consolidate preview cars into one lane.
@@ -53,17 +57,19 @@ Optional: with the dev server running, `node scripts/capture.mjs` saves desktop/
 
 ## Data provenance and limits
 
-`osm-source.xml` is an OpenStreetMap API extract retrieved on 2026-09-19 from bbox `-79.986,40.450,-79.978,40.455`. `scripts/extract-map.mjs` generates `src/data/intersection.json` using intersection node [105894148](https://www.openstreetmap.org/node/105894148) at **40.4516926, -79.983131**. Coordinates are projected locally in meters and rotated to align Penn Avenue with the scene x-axis. Run `node scripts/extract-map.mjs` to regenerate from the checked-in extract.
+`osm-campus-source.xml` is a public OpenStreetMap API extract retrieved on 2026-09-19 from bbox `-79.9600,40.4405,-79.9490,40.4470`. `scripts/extract-campus.mjs` generates `src/data/intersection.json` using Forbes/Bigelow intersection node [105013345](https://www.openstreetmap.org/node/105013345) at **40.4431909, -79.9535474**. Coordinates are projected locally in meters and rotated to align Forbes with the scene x-axis. The displayed crop spans the Forbes–Fifth campus corridor from the Towers and Forbes shops to the Cathedral and Heinz Chapel, with edge context. Run `node scripts/extract-map.mjs` (or `extract-campus.mjs`) to regenerate from the checked-in campus extract.
 
-© [OpenStreetMap contributors](https://www.openstreetmap.org/copyright), [ODbL 1.0](https://opendatacommons.org/licenses/odbl/1-0/). Attribution is visible in the scene and data dialog. Source database geometry remains under ODbL.
+© [OpenStreetMap contributors](https://www.openstreetmap.org/copyright), [ODbL 1.0](https://opendatacommons.org/licenses/odbl/1-0/). Attribution and source links are in the normal interface and data dialog. Source database geometry remains under ODbL.
 
-Road centerlines and building footprints are real. Heights use tagged heights/levels when present, otherwise deterministic illustrative heights. Facade windows, storefronts, awnings, roof details, street widths, sidewalks, landscaping, traffic signal placement, construction costs, speeds, demand, and behavior are illustrative. OSM tags can lag actual street changes. The [City of Pittsburgh Penn Avenue Rightsizing project](https://engage.pittsburghpa.gov/penn-ave-rightsizing/october-2025-project-update) provides real planning context; this scene is not a surveyed as-built model.
+The Cathedral uses its OSM building-part polygons and heights up to 163 m; its enclosing footprint is not extruded into an oversized solid tower. All three Litchfield Towers retain their circular OSM polygons and tagged heights. Closed building multipolygon shells and courtyard holes are retained, including the retail footprint containing El Jefe’s OSM POI at 3807 Forbes Avenue ([restaurant source](https://eljefestaqueria.com/)). Nodes provide tree and business positions; trees within six meters of existing or possible upgrade signals are suppressed. Roads and footpaths have distinct surfaces; illustrative actors follow the local road polylines.
 
-**No measured crash counts or traffic counts are loaded. No SUMO backend is included.** The default engine is `local-surrogate-v1`, a transparent uncalibrated frontend model. It is not a crash predictor or evidence of a real infrastructure treatment effect.
+Missing heights, facade windows, storefront decoration, awnings, roofs, road widths, signal hardware, costs and behavior remain illustrative. This is an OSM-based stylized model, not photogrammetry or a surveyed as-built model. All three editable intersections use OSM junction-node coordinates. Upgrade geometry stays attached to its intersection, and tree clearance includes all three sets of signal locations. The local comparison aggregates independent intersection responses under shared demand samples; it does not simulate coupled routing or queue spillback.
+
+**No measured crash counts or traffic counts are loaded. No SUMO backend is included.** The default combined engine is `local-network-surrogate-v1` (per-site estimates use `local-surrogate-v1`), a transparent uncalibrated frontend model. It is not a crash predictor or evidence of a real infrastructure treatment effect.
 
 ### Local Monte Carlo model
 
-`src/model.js` uses seed 42, paired samples, uniform demand variation (±15%), assumed baseline speed variation, and explicit intervention coefficients. Each pair shares baseline randomness. The before case uses original infrastructure, a 35-second Penn green phase, and zero AV adoption; demand is shared with the proposed case. The after case applies selected upgrades, AV share, and signal split. Without interventions or setting changes, before and after match exactly.
+`src/model.js` uses seed 42, paired samples, uniform demand variation (±15%), assumed baseline speed variation, and explicit intervention coefficients. Each pair shares baseline randomness. Each site receives the same paired random demand/noise draws, so combined confidence intervals are calculated from the combined trial values rather than assuming independent sites. Combined risk, speed, delay, and access are equal-demand averages; throughput is the sum of intersection passages and must not be read as unique campus vehicles. The before case uses original infrastructure, a 35-second Forbes green phase, and zero AV adoption; demand is shared with the proposed case. The after case applies selected upgrades, AV share, and signal split. Without interventions or setting changes, before and after match exactly.
 
 - Conflict proxy is a synthetic index per 1,000 vehicles, **not a measured TTC-event rate or predicted crash count**.
 - Pedestrian access and street score are game indices, not official planning measures.
@@ -78,15 +84,22 @@ Copy `.env.example` to `.env.local`, set `VITE_SIMULATION_API_URL=http://127.0.0
 
 ```json
 {
-  "schemaVersion": 1,
-  "intersection": "penn-21st-pittsburgh",
-  "upgrades": [{ "type": "crosswalk", "zone": "north" }],
+  "schemaVersion": 2,
+  "intersection": "pitt-campus-network",
+  "intersections": [
+    {"id":"pitt-forbes-bigelow","origin":[0,0],"sourceUrl":"https://www.openstreetmap.org/node/105013345"},
+    {"id":"pitt-fifth-bigelow","origin":[-24.6,-170.48],"sourceUrl":"https://www.openstreetmap.org/node/105097584"},
+    {"id":"pitt-forbes-bouquet","origin":[-280.56,0],"sourceUrl":"https://www.openstreetmap.org/node/105013320"}
+  ],
+  "upgrades": [{"type":"crosswalk","zone":"north","intersection":"pitt-fifth-bigelow"}],
   "settings": { "demand": 800, "green": 35, "av": 0, "runs": 100 },
   "seed": 42
 }
 ```
 
-The endpoint must return the following shape (values below are only a schema example):
+The endpoint must return an aggregate metric block plus an `intersections` array with exactly one result per requested ID. Each per-site entry has its `id`, `name`, and the same metric/provenance block below. Missing or duplicate sites are rejected; older single-intersection responses are not silently accepted. Schema version 2 exports also retain the intersection on every upgrade.
+
+Common metric/provenance block (illustrative values; used at the top level and within every site entry):
 
 ```json
 {
@@ -113,12 +126,14 @@ The endpoint must return the following shape (values below are only a schema exa
 }
 ```
 
-Units: risk proxy / 1,000 vehicles; speed mph; delay seconds/vehicle; throughput vehicles/hour; access 0–100. `reduction` and `retained` are percentages, `score` is 0–100. The backend owns calibration, network construction, rerouting, SUMO runs, SSM extraction, objective aggregation, and return of matching metrics. The current frontend supports one synchronous response with a 60-second timeout; long-running SUMO jobs should gain a job/polling adapter before production use. Backend errors or malformed results are surfaced and never silently replaced by local results.
+Units: risk proxy / 1,000 vehicles; speed mph; delay seconds/vehicle; per-site throughput vehicles/hour, aggregate throughput intersection passages/hour; access 0–100. `reduction` and `retained` are percentages, `score` is 0–100. The backend owns calibration, network construction, rerouting, SUMO runs, SSM extraction, objective aggregation, and return of matching metrics. The current frontend supports one synchronous response with a 60-second timeout; long-running SUMO jobs should gain a job/polling adapter before production use. Backend errors or malformed results are surfaced and never silently replaced by local results.
 
 ## Files
 
 - `src/main.js` — UI state, interactions, results, dialogs, export.
-- `src/scene.js` — Three.js scene and illustrative actors.
+- `src/scene.js` — Three.js scene and illustrative actors at all three sites.
+- `src/navigation.js` — orbit, pan, street perspective, keyboard/touch movement.
+- `src/intersections.js` — OSM junction identifiers and projected positions.
 - `src/architecture.js` — batched, footprint-aligned facade details.
 - `src/model.js` — catalog, budget rules, local Monte Carlo model.
 - `src/simulation.js` — network adapter and response validation.
