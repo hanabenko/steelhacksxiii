@@ -1,3 +1,6 @@
+import { makeScenario, DEFAULT_CONDITIONS, WEATHER } from './scenarios.js';
+import {ROAD_BLOCKS} from './road-blocks.js';
+import './modes.css';
 import { COST_DATA } from './model.js';
 import './build-tray.css';
 import {
@@ -112,7 +115,7 @@ const money = (n) =>
         maximumFractionDigits: 0,
     }).format(n);
 let items = [],
-    settings = { ...DEFAULT_SETTINGS },
+    settings = { ...DEFAULT_SETTINGS, conditions:{...DEFAULT_CONDITIONS}, budget:BUDGET },
     selected = null,
     result = null,
     running = false,
@@ -122,6 +125,8 @@ let items = [],
     revision = 0;
 const simulationEndpoint = import.meta.env.VITE_SIMULATION_API_URL || "";
 let scene, tutorial;
+let gameBaseline=null;
+let gameMode=false, activeScenario=null, freeSession=null, budgetLimit=BUDGET, hazardTool=null;
 
 const intersectionOptions = INTERSECTIONS.map(
     (site) => `<option value="${site.id}">${site.name}</option>`,
@@ -150,7 +155,7 @@ app.innerHTML = `
         <div id="event-chip" class="event-chip" hidden>${icon("TriangleAlert")} <span></span></div>
         <div class="scene-footer"><span>${icon("Mouse")} Left drag to move <b>·</b> Right drag to orbit</span><a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noreferrer">© OpenStreetMap</a></div>
       </div>
-      <div class="playback"><button id="pause" aria-label="Pause animation">${icon("Pause")}</button><div class="playback-status"><strong id="playback-title">A city in motion</strong><span>Illustrative traffic preview</span></div><div class="playback-wave">${Array.from({ length: 35 }, (_, i) => `<i style="height:${6 + ((i * 7) % 19)}px"></i>`).join("")}</div><div class="speed-control"><button data-speed="1" class="selected">1×</button><button data-speed="2">2×</button><button data-speed="4">4×</button></div></div>
+      <div class="playback"><button id="pause" aria-label="Pause animation">${icon("Pause")}</button><div class="playback-status"><strong id="playback-title">A city in motion</strong><span>Illustrative traffic preview</span></div><div class="playback-wave">${Array.from({ length: 35 }, (_, i) => `<i style="height:${6 + ((i * 7) % 19)}px"></i>`).join("")}</div><div class="speed-control"><button data-speed="1" class="selected">1×</button><button data-speed="10">10×</button><button data-speed="100">100×</button></div></div>
       <section class="simulation-settings panel"><div class="section-heading"><h2>${icon("SlidersHorizontal")} Simulation settings</h2><span class="subtle">Make the scenario your own</span></div><div class="settings-grid"><label>Demand per intersection <output id="demand-value">800 veh/h</output><input id="demand" type="range" min="200" max="1600" step="100" value="800"><span>Quiet <span>Rush hour</span></span></label><label>Shared green phase <output id="green-value">35 sec</output><input id="green" type="range" min="20" max="60" step="5" value="35"><span>Forbes Avenue <span>70s cycle</span></span></label><label>Autonomous vehicles <output id="av-value">0%</output><input id="av" type="range" min="0" max="100" step="10" value="0"><span>All human <span>All autonomous</span></span></label></div><p class="network-run-note">One run tests all 3 intersections with these shared settings. Compare combined results or choose a single site afterward.</p><div class="run-row"><label for="runs">${icon("Shuffle")} Monte Carlo runs <select id="runs"><option value="100">100 runs</option><option value="500">500 runs</option><option value="1000">1,000 runs</option></select></label><span class="seed-tag">Seed 42 · paired samples</span><button id="run" class="primary-button">${icon("Play")} Run simulation</button></div></section>
       </section>
       <aside class="results-panel panel"><div class="section-heading"><h2>Your mission</h2><span class="step">02</span></div><div class="mission-art">${icon("Sprout")}<span>STREETS FOR EVERYONE</span></div><h3>People first.<br>Keep Pittsburgh moving.</h3><p class="panel-description">Create a safer crossing without bringing the neighborhood to a stop.</p><div class="objectives"><div id="objective-risk"><span class="objective-icon">${icon("ShieldCheck")}</span><div><strong>Make it safer</strong><small>Reduce conflict proxy by 20%</small></div><span class="objective-status">○</span></div><div id="objective-flow"><span class="objective-icon">${icon("MoveRight")}</span><div><strong>Keep traffic flowing</strong><small>Retain 95% of throughput</small></div><span class="objective-status">○</span></div><div id="objective-access"><span class="objective-icon">${icon("Accessibility")}</span><div><strong>Put people first</strong><small>Reach 65 pedestrian access</small></div><span class="objective-status">○</span></div></div>
@@ -170,8 +175,22 @@ app.innerHTML = `
               "",
           )}</div><p class="change-key"><span>● Improvement</span><span>● Tradeoff</span><span>— No change</span></p><button id="results-run" class="primary-button">Set up a simulation →</button><div class="result-note" id="result-note">${icon("FlaskConical")} Run your design to see what changes. Results use an uncalibrated local model.</div><button id="compare" class="compare-button" disabled>${icon("Columns2")} Compare with original</button></aside>
     </div><footer class="page-footer"><span>${icon("MapPin")} Built around Pittsburgh. Designed for possibility.</span><span>Real geometry <b>·</b> Experimental model <b>·</b> Human-centered streets</span></footer>
-  </main><section class="upgrade-bar" aria-label="Quick upgrades"><div class="upgrade-bar-heading"><strong>BUILD <span id="tray-budget">$100,000</span></strong><span>Drag a card → match the blue silhouette</span></div><div class="upgrade-slots">${TOOLS.map((t, i) => `<button data-quick-tool="${t.id}" aria-label="Select ${t.name}" aria-pressed="false" title="${t.name}: ${t.detail}"><kbd>${i + 1}</kbd>${icon(t.icon)}<strong>${{ crosswalk: "Crosswalk", bike: "Bike lane", curb: "Curb extension", shelter: "Bus shelter", diet: "Road diet" }[t.id]}</strong><span>${money(t.cost)}</span>${icon("GripVertical", "drag-grip")}</button>`).join("")}</div></section><div class="quick-simulation"><button id="quick-run" aria-label="Quick run simulation">${icon("Play")} Run</button><button id="quick-settings">${icon("SlidersHorizontal")} Settings · <span id="quick-runs">100</span> trials</button></div><nav class="action-dock" aria-label="Intersection tools"><button data-panel="design" aria-controls="design-panel" aria-expanded="false"><span class="dock-icon">${icon("Route")}</span><span><strong>Design</strong><small>Make your move</small></span></button><span class="dock-divider"></span><button data-panel="simulation" aria-controls="simulation-panel" aria-expanded="false"><span class="dock-icon">${icon("Play")}</span><span><strong>Simulate</strong><small>Test the possibilities</small></span></button><span class="dock-divider"></span><button data-panel="results" aria-controls="results-panel" aria-expanded="false"><span class="dock-icon">${icon("ShieldCheck")}</span><span><strong>Impact</strong><small>Find your balance</small></span></button></nav><div class="explore-hint"><span class="hint-dots"><i></i><i></i><i></i></span><button id="tour-launch">New here? Take the walkthrough →</button></div><div id="toast" role="status" aria-live="polite"></div><dialog id="dialog"><div class="dialog-heading"><h2 id="dialog-title"></h2><button id="close-dialog" aria-label="Close dialog">${icon("X")}</button></div><div id="dialog-content"></div></dialog>`;
+  </main><section class="upgrade-bar" aria-label="Quick upgrades"><div class="upgrade-bar-heading"><strong>BUILD <span id="tray-budget">$100,000</span></strong><span>Drag a card → match the blue silhouette</span></div><div class="upgrade-slots">${TOOLS.map((t, i) => `<button data-quick-tool="${t.id}" aria-label="Select ${t.name}" aria-pressed="false" title="${t.name}: ${t.detail}"><kbd>${i + 1}</kbd>${icon(t.icon)}<strong>${{ crosswalk: "Crosswalk", bike: "Bike lane", curb: "Curb extension", shelter: "Bus shelter", diet: "Road diet" }[t.id]}</strong><span>${money(t.cost)}</span>${icon("GripVertical", "drag-grip")}</button>`).join("")}</div></section><div class="quick-simulation"><button id="quick-run" aria-label="Quick run simulation">${icon("Play")} Run simulation</button><button id="quick-settings">${icon("SlidersHorizontal")} Settings · <span id="quick-runs">100</span> trials</button></div><nav class="action-dock" aria-label="Intersection tools"><button data-panel="design" aria-controls="design-panel" aria-expanded="false"><span class="dock-icon">${icon("Route")}</span><span><strong>Design</strong><small>Make your move</small></span></button><span class="dock-divider"></span><button data-panel="simulation" aria-controls="simulation-panel" aria-expanded="false"><span class="dock-icon">${icon("Play")}</span><span><strong>Simulate</strong><small>Test the possibilities</small></span></button><span class="dock-divider"></span><button data-panel="results" aria-controls="results-panel" aria-expanded="false"><span class="dock-icon">${icon("ShieldCheck")}</span><span><strong>Impact</strong><small>Find your balance</small></span></button></nav><div class="explore-hint"><span class="hint-dots"><i></i><i></i><i></i></span><button id="tour-launch">New here? Take the walkthrough →</button></div><div id="toast" role="status" aria-live="polite"></div><dialog id="dialog"><div class="dialog-heading"><h2 id="dialog-title"></h2><button id="close-dialog" aria-label="Close dialog">${icon("X")}</button></div><div id="dialog-content"></div></dialog>`;
 const $ = (selector) => document.querySelector(selector);
+document.body.dataset.mode='simulation';
+const sourcesButton=$('#data-button');sourcesButton.textContent='Data sources & model limits';
+$('.simulation-settings').append(sourcesButton);$('.location-bar').remove();
+$('#quick-run').setAttribute('aria-label','Run simulation settings');
+$('.action-dock').insertAdjacentHTML('afterend','<button id="play-mode" class="play-mode">▶ Play</button><section class="scenario-banner" hidden><div><small>PLAY · FIX THE STREETS</small><strong id="scenario-title"></strong><p id="scenario-description"></p></div><button id="new-challenge">New challenge</button><button id="exit-game">Exit game</button></section>');
+$('.playback-status span').id='environment-status';
+const hazardOptions='<option value="">None</option>'+INTERSECTIONS.flatMap(site=>['north','east','south','west'].map(zone=>`<option value="${site.id}/${zone}">${site.name} · ${zone}</option>`)).join('');
+$('.settings-grid').insertAdjacentHTML('afterend',`<fieldset id="condition-controls"><legend>Simulation conditions</legend><p id="mode-explanation">Free simulation: set your own conditions and budget.</p><label>Weather<select id="weather">${Object.entries(WEATHER).map(([id,w])=>`<option value="${id}">${w.label}</option>`).join('')}</select></label><label>Closed approach<select id="closed-road">${hazardOptions}</select></label><label>Large pothole<select id="pothole-road">${hazardOptions}</select></label><label>Starting hour <output id="hour-value">09:00</output><input id="start-hour" type="range" min="0" max="23" value="9"></label><label class="cycle-setting"><input id="day-night" type="checkbox" checked> Day / night cycle</label><label>Build budget ($)<input id="scenario-budget" type="number" min="0" max="500000" step="1000" value="100000"></label></fieldset><div class="free-actions"><button id="free-design">Edit streets</button><button id="free-results">View impact</button></div>`);
+$('#av').closest('label').hidden=true; // AV controls disabled for now; model effects and vehicle markers are also disabled.
+for(const id of ['closed-road','pothole-road','scenario-budget'])$('#'+id).closest('label').classList.add('game-condition');
+$('#condition-controls').insertAdjacentHTML('beforeend','<section class="free-hazards"><h3>Place road conditions</h3><p>Click a blue road to place a pothole, or close a full block with barriers at both ends. Repeat to add more.</p><div class="hazard-actions"><button id="add-pothole" type="button">Add pothole</button><button id="add-closure" type="button">Add road closure</button><button id="cancel-hazard" type="button" hidden>Done placing</button></div><p id="hazard-status" role="status"></p><ul id="hazard-list"></ul><button id="clear-hazards" type="button">Clear placed conditions</button></section>');
+const trialSlider=document.createElement('div');trialSlider.className='trial-slider';trialSlider.innerHTML='<button id="runs-minus" aria-label="Decrease simulation runs">−</button><input id="runs-slider" aria-label="Monte Carlo runs" type="range" min="10" max="500" step="1" value="100"><button id="runs-plus" aria-label="Increase simulation runs">+</button><output id="runs-value">100 runs</output>';
+$('#runs').classList.add('game-runs');$('#runs').after(trialSlider);
+$('#play-mode').textContent='▶ Play game';
 // Move the existing accessible editor controls into one bottom build tray.
 const oldEditor=$('.tools-panel'),buildTray=$('.upgrade-bar');
 const trayBudget=$('#tray-budget');trayBudget.hidden=true;
@@ -183,6 +202,7 @@ const summary=document.createElement('p');summary.id='build-summary';summary.tex
 buildTray.querySelector('.tool-list').after(summary);
 const keyboard=document.createElement('details');keyboard.className='keyboard-placement';keyboard.innerHTML='<summary>Keyboard placement · choose an intersection approach</summary>';keyboard.append($('#approaches'));summary.after(keyboard);
 buildTray.insertAdjacentHTML('beforeend','<button id="cost-sources" class="cost-sources">Oakland cost sources · planning estimates</button>');
+for(const panel of [buildTray,$('.results-panel')])panel.insertAdjacentHTML('beforeend','<button class="return-simulation">← Simulation settings</button>');
 const panels = {
     design: buildTray,
     simulation: $(".simulation-settings"),
@@ -231,10 +251,10 @@ document.querySelectorAll("[data-close-panel]").forEach(
         (button.onclick = () => {
             const name = button.dataset.closePanel;
             openPanel(null);
-            $(`button[data-panel="${name}"]`).focus({ preventScroll: true });
+            (gameMode?$(`button[data-panel="${name}"]`):$("#quick-run")).focus({ preventScroll: true });
         }),
 );
-$(".header").append($("#export-button"));
+$("#export-button").remove();
 document.addEventListener("keydown", (event) => {
     if (
         event.key === "Escape" &&
@@ -244,7 +264,7 @@ document.addEventListener("keydown", (event) => {
     ) {
         const previous = activePanel;
         openPanel(null);
-        $(`button[data-panel="${previous}"]`).focus({ preventScroll: true });
+        (gameMode?$(`button[data-panel="${previous}"]`):$("#quick-run")).focus({ preventScroll: true });
     }
 });
 function refreshIcons() {
@@ -262,6 +282,7 @@ function toast(message) {
     );
 }
 function markDirty() {
+    if(gameMode&&gameBaseline)$('#game-score').textContent=`Baseline: ${gameBaseline.accidents} modeled accidents. Design changed — test again for your new score.`;
     revision++;
     $("#result-scope").disabled = true;
     result = null;
@@ -290,11 +311,13 @@ function markDirty() {
 }
 function updateDesign() {
     const spent = costOf(items);
-    $("#budget").textContent = money(BUDGET - spent);
-    $("#budget-hud").textContent = money(BUDGET - spent);
-    $("#tray-budget").textContent = money(BUDGET - spent);
+    $('.budget-card p span:last-child').textContent='of '+money(budgetLimit);
+    $('.budget-explain').textContent='Shared budget: '+money(budgetLimit)+'. Undo or remove upgrades for a full refund.';
+    $("#budget").textContent = money(budgetLimit - spent);
+    $("#budget-hud").textContent = money(budgetLimit - spent);
+    $("#tray-budget").textContent = money(budgetLimit - spent);
     $("#spent").textContent = `${money(spent)} invested`;
-    $("#budget-fill").style.width = `${100 - (spent / BUDGET) * 100}%`;
+    $("#budget-fill").style.width = `${100 - (budgetLimit ? spent / budgetLimit : 0) * 100}%`;
     $("#undo").disabled = $("#reset").disabled = items.length === 0;
     $("#upgrade-count").textContent = items.length
         ? `${items.length} upgrade${items.length === 1 ? "" : "s"} placed · ready to test`
@@ -350,7 +373,7 @@ function chooseTool(type) {
     $("#approaches").hidden = !selected;
     $("#build-summary").textContent = selected ? TOOLS.find(t=>t.id===selected).detail : "Choose an upgrade, then drag it onto its blue road footprint.";
     scene?.setTool(selected);
-    $("#placement-hint").hidden = !selected;
+    $("#placement-hint").hidden = true;
     if (selected) {
         const t = TOOLS.find((t) => t.id === selected);
         $("#placement-name").textContent =
@@ -359,8 +382,9 @@ function chooseTool(type) {
 }
 function place(type, zone, intersection = DEFAULT_INTERSECTION) {
     document.body.classList.remove("is-dragging");
-    if (running) return toast("Wait for this run to finish before editing.");
-    const r = addUpgrade(items, type, zone, intersection);
+    if (running || (gameMode && !gameBaseline)) return toast("Wait for the baseline or current run to finish before editing.");
+    if(type === "closure" && settings.conditions?.closure?.intersection === intersection && settings.conditions.closure.zone === zone)return toast("This approach is already closed by the scenario.");
+    const r = addUpgrade(items, type, zone, intersection, budgetLimit);
     if (r.error) return toast(r.error);
     items = r.items;
     markDirty();
@@ -368,14 +392,16 @@ function place(type, zone, intersection = DEFAULT_INTERSECTION) {
     $("#budget-receipt").textContent =
         money(TOOLS.find((t) => t.id === type).cost) +
         " spent · " +
-        money(BUDGET - costOf(items)) +
+        money(budgetLimit - costOf(items)) +
         " remaining";
-    toast(
-        `${TOOLS.find((t) => t.id === type).name} added to the ${zone} approach.`,
-    );
 }
 try {
     scene = createIntersection($("#scene"), place, (event) => {
+        if (event.type === "environment") {
+            const status=$("#environment-status");if(status)status.textContent=event.weather+" · "+String(Math.floor(event.hour)).padStart(2,"0")+":"+String(Math.floor(event.hour%1*60)).padStart(2,"0");
+            return;
+        }
+        if(event.type==='hazard-place'){placeCondition(event.kind,event.point);return;}
         if (event.type === "navigation") {
             document
                 .querySelectorAll("button[data-navigation]")
@@ -405,6 +431,19 @@ try {
             $("#signal-countdown").textContent = event.paused
                 ? "Paused"
                 : event.remaining + "s to change";
+            return;
+        }
+        if (event.type === 'view-heading') {
+            const slider = $('#design-rotation');
+            if (slider && document.activeElement !== slider) {
+                slider.value = String(event.degrees);
+                $('#design-rotation-value').textContent = event.degrees + '°';
+            }
+            return;
+        }
+        if (event.type === 'pedestrian-accident') {
+            $('#pedestrian-accident-count').textContent = String(event.count);
+            toast('Pedestrian collision recorded in the live preview. Simulation risk estimates are unchanged.');
             return;
         }
         if (event.type === "hint") {
@@ -447,7 +486,7 @@ $("#placed-list").onclick = (event) => {
     $("#budget-receipt").textContent =
         money(refund) +
         " refunded · " +
-        money(BUDGET - costOf(items)) +
+        money(budgetLimit - costOf(items)) +
         " remaining";
 };
 document
@@ -467,7 +506,7 @@ $("#undo").onclick = () => {
     updateDesign();
     $("#budget-receipt").textContent =
         "Last upgrade refunded · " +
-        money(BUDGET - costOf(items)) +
+        money(budgetLimit - costOf(items)) +
         " remaining";
 };
 $("#reset").onclick = () => {
@@ -475,7 +514,7 @@ $("#reset").onclick = () => {
     items = [];
     markDirty();
     updateDesign();
-    $("#budget-receipt").textContent = "Full budget restored: " + money(BUDGET);
+    $("#budget-receipt").textContent = "Full budget restored: " + money(budgetLimit);
     toast("Design reset. Your full budget is restored.");
 };
 document.addEventListener("keydown", (e) => {
@@ -607,8 +646,13 @@ function displayResult(network) {
     refreshIcons();
 }
 $("#run").onclick = async () => {
-    if (running) return;
+    if (running || gameMode) return;
     running = true;
+    setHazardTool(null);
+    for(const id of ['runs-slider','runs-minus','runs-plus'])$('#'+id).disabled=true;
+    $('#condition-controls').disabled=true;
+    scene?.startSimulation();
+    if(paused)$("#pause").click();
     $("#quick-run").disabled = true;
     $("#quick-run").textContent = "Running trials…";
     const version = revision;
@@ -639,22 +683,25 @@ $("#run").onclick = async () => {
         toast(`Simulation failed: ${error.message}`);
     } finally {
         running = false;
+        $('#runs-slider').disabled=false;$('#runs-minus').disabled=settings.runs<=10;$('#runs-plus').disabled=settings.runs>=500;
+        $('#condition-controls').disabled=gameMode;
         $("#quick-run").disabled = false;
-        $("#quick-run").innerHTML = icon("Play") + " Run";
+        $("#quick-run").innerHTML = icon("Play") + " Run simulation";
         $("#run").disabled = false;
         $("#run").innerHTML = `${icon("Play")} Run simulation`;
         document
             .querySelectorAll(".settings-grid input,#runs")
-            .forEach((el) => (el.disabled = false));
+            .forEach((el) => (el.disabled = gameMode && el.id !== "runs"));
         refreshIcons();
     }
 };
-$("#quick-run").onclick = () => $("#run").onclick();
+$("#quick-run").onclick = () => openPanel("simulation");
 $("#result-scope").onchange = () => result && displayResult(result);
 $("#quick-settings").onclick = () => openPanel(activePanel === "simulation" ? null : "simulation");
 
 document.addEventListener("keydown", (event) => {
     if (
+        !gameMode ||
         document.body.classList.contains("observe-mode") ||
         event.ctrlKey ||
         event.metaKey ||
@@ -695,7 +742,7 @@ function download() {
     setTimeout(() => URL.revokeObjectURL(url), 1000);
     toast("Scenario exported with settings, upgrades, and model provenance.");
 }
-$("#export-button").onclick = download;
+
 function dialog(title, content) {
     $("#dialog-title").textContent = title;
     $("#dialog-content").innerHTML = content;
@@ -724,7 +771,7 @@ $("#data-button").onclick = () =>
 $("#scenarios-button").onclick = () =>
     dialog(
         "Your current scenario",
-        `<p><strong>Three-intersection campus design</strong><br>Pitt campus · Oakland</p><div class="scenario-summary"><span>${items.length} upgrades</span><span>${money(costOf(items))} invested</span><span>${result ? `Score ${result.score}/100` : "Not simulated"}</span></div>${items.length ? `<ul>${items.map((i) => `<li>${TOOLS.find((t) => t.id === i.type).name} · ${i.zone} approach · ${intersectionById(i.intersection).name}</li>`).join("")}</ul>` : "<p>Your intersection is ready for its first upgrade.</p>"}<p>Use <strong>Export scenario</strong> to save your design as JSON. This session is held in memory.</p>`,
+        `<p><strong>Three-intersection campus design</strong><br>Pitt campus · Oakland</p><div class="scenario-summary"><span>${items.length} upgrades</span><span>${money(costOf(items))} invested</span><span>${result ? `Score ${result.score}/100` : "Not simulated"}</span></div>${items.length ? `<ul>${items.map((i) => `<li>${TOOLS.find((t) => t.id === i.type).name} · ${i.zone} approach · ${intersectionById(i.intersection).name}</li>`).join("")}</ul>` : "<p>Your intersection is ready for its first upgrade.</p>"}<p>This session is held in memory.</p>`,
     );
 $("#editor-tab").onclick = () => {
     $("#dialog").close();
@@ -733,7 +780,7 @@ $("#editor-tab").onclick = () => {
 };
 scene?.setPlacementValidator(
     (type, zone, intersection) =>
-        addUpgrade(items, type, zone, intersection).error,
+        addUpgrade(items, type, zone, intersection, budgetLimit).error,
 );
 for (const [container, selector] of [
     [$(".tool-list"), "[data-tool]"],
@@ -754,7 +801,7 @@ for (const [container, selector] of [
     });
 tutorial = createWalkthrough({
     openPanel,
-    getState: () => ({ count: items.length, result }),
+    getState: () => ({ count: items.length, result, budget:budgetLimit }),
 });
 $("#guide-button").onclick = () => tutorial.start();
 $("#tour-launch").onclick = () => tutorial.start();
@@ -786,7 +833,8 @@ function toggleObservation() {
     document.body.append(observeButton);
     const hidden = document.body.classList.toggle("observe-mode");
     if (hidden) {
-        if (selected) chooseTool(selected);
+    if (selected) chooseTool(selected);
+    setHazardTool(null);
         if (tutorial.active) tutorial.stop();
         $("#dialog").close();
         $("#layer-menu").hidden = true;
@@ -817,14 +865,36 @@ document.addEventListener("keydown", (event) => {
 const junctionJumps = document.createElement('div');
 // Keep navigation above the right-side panels on narrow screens.
 $('#app').append($('.navigation-panel'));
+$('.navigation-panel').insertAdjacentHTML('beforeend','<p class="preview-accidents">Pedestrian accidents · preview: <strong id="pedestrian-accident-count">0</strong></p>');
 junctionJumps.className = 'intersection-jumps';
 junctionJumps.innerHTML = '<button id="previous-intersection" aria-label="Previous intersection" title="Previous intersection">←</button><span id="jump-intersection-name">Jump to intersection</span><button id="next-intersection" aria-label="Next intersection" title="Next intersection">→</button>';
 $('.navigation-panel summary').after(junctionJumps);
+const designCamera = document.createElement('div');
+designCamera.className = 'design-camera';
+designCamera.setAttribute('aria-label', 'Design camera controls');
+designCamera.innerHTML = '<button id="design-previous" aria-label="Jump to previous intersection">←</button><label for="design-rotation">Rotate view <output id="design-rotation-value">41°</output><input id="design-rotation" type="range" min="0" max="360" value="41" step="1"></label><button id="design-next" aria-label="Jump to next intersection">→</button>';
+$('#app').append(designCamera);
+$('#design-previous').onclick = () => $('#previous-intersection').click();
+$('#design-next').onclick = () => $('#next-intersection').click();
+$('#design-rotation').oninput = event => {
+    $('#design-rotation-value').textContent = event.target.value + '°';
+    scene?.rotateView(Number(event.target.value));
+};
+function setTrials(value){
+    if(running||gameMode)return;
+    settings.runs=Math.max(10,Math.min(500,Math.round(Number(value))));
+    $('#runs-slider').value=settings.runs;$('#runs-value').textContent=settings.runs+' runs';$('#quick-runs').textContent=settings.runs;
+    $('#runs-minus').disabled=settings.runs===10;$('#runs-plus').disabled=settings.runs===500;markDirty();
+}
+$('#runs-slider').oninput=e=>setTrials(e.target.value);
+$('#runs-minus').onclick=()=>setTrials(settings.runs-1);$('#runs-plus').onclick=()=>setTrials(settings.runs+1);
 for (const [id, direction] of [['previous-intersection', -1], ['next-intersection', 1]]) {
     $('#' + id).onclick = () => {
         const current = INTERSECTIONS.findIndex(site => site.id === $('.signal-hud').dataset.intersection);
         const site = INTERSECTIONS[((current < 0 ? 0 : current) + direction + INTERSECTIONS.length) % INTERSECTIONS.length];
         scene?.jumpToIntersection(site.id, topView);
+        $('#design-rotation').value = topView ? '0' : '41';
+        $('#design-rotation-value').textContent = (topView ? '0' : '41') + '°';
         $('.signal-hud').dataset.intersection = site.id;
         $('#jump-intersection-name').textContent = site.name;
     };
@@ -833,7 +903,6 @@ for (const [id, direction] of [['previous-intersection', -1], ['next-intersectio
 document.querySelectorAll("button[data-navigation]").forEach(
     (button) =>
         (button.onclick = () => {
-            openPanel(null);
             scene?.setNavigation(button.dataset.navigation);
         }),
 );
@@ -864,3 +933,122 @@ $("#collision-demo").onclick = () => {
 };
 
 $('#cost-sources').onclick=()=>dialog('Oakland cost sources',`<p>${COST_DATA.note}</p><p><strong>Local benchmark:</strong> Terrace / DeSoto’s multi-block safety project was reported at about $110,000 in 2025. It is not a per-upgrade rate.</p><ul>${COST_DATA.sources.map(source=>`<li><a href="${source.url}" target="_blank" rel="noreferrer">${source.title}</a> · ${source.publisher}${source.costBand?' · '+source.costBand:''}</li>`).join('')}</ul><p>Tool prices are labeled planning allowances. Design, drainage, utilities, accessibility, procurement and inflation require a project-specific estimate.</p>`);
+
+function syncModeControls(){
+    settings.av=0; // AV simulation is disabled until the feature is re-enabled.
+    for(const key of ['demand','green','av']){
+        $('#'+key).value=settings[key];$('#'+key).disabled=gameMode;
+        $('#'+key+'-value').textContent=settings[key]+{demand:' veh/h',green:' sec',av:'%'}[key];
+    }
+    const c=settings.conditions;
+    $('#weather').value=c.weather;
+    $('#closed-road').value=c.closure?c.closure.intersection+'/'+c.closure.zone:'';
+    $('#pothole-road').value=c.pothole?c.pothole.intersection+'/'+c.pothole.zone:'';
+    $('#start-hour').value=c.hour;$('#hour-value').textContent=String(c.hour).padStart(2,'0')+':00';
+    $('#day-night').checked=c.dayNight;$('#scenario-budget').value=budgetLimit;
+    $('#condition-controls').disabled=gameMode;$('#runs').value=settings.runs;$('#quick-runs').textContent=settings.runs;
+    $('#runs-slider').value=Math.min(500,settings.runs);$('#runs-value').textContent=settings.runs+' runs';
+    $('#mode-explanation').textContent=gameMode?'Challenge conditions are locked. Use your budget to redesign the streets.':'Set weather and time, then place road conditions directly on the map. No build budget applies.';
+    $('.comparison-explain').innerHTML='<strong>Before:</strong> original street under these same conditions.<br><strong>After:</strong> your upgrades and settings.<br>Paired samples use the same weather, hazards and demand.';
+    scene?.setSettings(settings);updateDesign();renderConditions();
+}
+async function startChallenge(){
+    if(running)return toast('Wait for the current run to finish.');
+    setHazardTool(null);
+    if(!gameMode)freeSession={items:structuredClone(items),settings:structuredClone(settings),budget:budgetLimit};
+    activeScenario=makeScenario();gameMode=true;document.body.dataset.mode='game';
+    settings=structuredClone(activeScenario.settings);settings.challenge={id:activeScenario.id,title:activeScenario.title};budgetLimit=activeScenario.budget;items=[];chooseTool(null);
+    $('.scenario-banner').hidden=false;$('#scenario-title').textContent=activeScenario.title+' · '+money(budgetLimit);
+    $('#scenario-description').textContent=activeScenario.description;
+    markDirty();syncModeControls();openPanel('design');
+    gameBaseline=null;running=true;$('#test-design').disabled=true;
+    $('#game-score').textContent='Calculating the original street baseline…';
+    try {
+        gameBaseline=await gameTrials([],settings);
+        $('#game-score').textContent=`Baseline: ${gameBaseline.accidents} modeled accidents across ${settings.runs} trials. Add upgrades, then test your design.`;
+    } catch(error) { $('#game-score').textContent='Baseline failed: '+error.message+'. Start a new challenge to retry.'; }
+    finally { running=false;$('#test-design').disabled=!gameBaseline; }
+
+}
+$('#play-mode').onclick=startChallenge;$('#new-challenge').onclick=startChallenge;
+$('#exit-game').onclick=()=>{
+    if(running)return toast('Wait for the current run to finish.');
+    setHazardTool(null);
+    gameMode=false;document.body.dataset.mode='simulation';activeScenario=null;$('.scenario-banner').hidden=true;
+    items=freeSession?.items||[];settings=freeSession?.settings||{...DEFAULT_SETTINGS,conditions:{...DEFAULT_CONDITIONS},budget:BUDGET};budgetLimit=freeSession?.budget??BUDGET;
+    chooseTool(null);markDirty();syncModeControls();openPanel(null);
+};
+$('#free-design').onclick=()=>openPanel('design');$('#free-results').remove();
+for(const button of document.querySelectorAll('.return-simulation'))button.onclick=()=>openPanel('simulation');
+function changeConditions(){
+    if(gameMode||running)return;
+    const parse=id=>{const value=$('#'+id).value;if(!value)return null;const [intersection,zone]=value.split('/');return{intersection,zone};};
+    const budget=Number($('#scenario-budget').value);
+    if(!Number.isFinite(budget)||budget<costOf(items)||budget<0||budget>500000){$('#scenario-budget').value=budgetLimit;return toast('Budget must cover current upgrades and be between $0 and $500,000.');}
+    budgetLimit=budget;settings.budget=budget;
+    settings.conditions={...settings.conditions,weather:$('#weather').value,closure:parse('closed-road'),pothole:parse('pothole-road'),hour:Number($('#start-hour').value),dayNight:$('#day-night').checked};
+    markDirty();syncModeControls();
+}
+for(const id of ['weather','closed-road','pothole-road','start-hour','day-night','scenario-budget'])$('#'+id).addEventListener('change',changeConditions);
+$('#start-hour').addEventListener('input',()=>$('#hour-value').textContent=String($('#start-hour').value).padStart(2,'0')+':00');
+syncModeControls();
+
+function setHazardTool(type){
+    hazardTool=type;scene?.setHazardTool(type);$('#cancel-hazard').hidden=!type;
+    for(const [id,kind] of [['add-pothole','pothole'],['add-closure','closure']])$('#'+id).setAttribute('aria-pressed',String(type===kind));
+    $('#hazard-status').textContent=type==='closure'?'Click a glowing blue road block. Barriers will close both ends.':type==='pothole'?'Click the blue road surface to place a pothole. Keep clicking to add more.':'';
+}
+function placeCondition(kind,point){
+    if(gameMode||running)return;
+    if(kind==='closure'){
+        if((settings.conditions.closures||[]).includes(point.block.id))return toast('This entire block is already closed.');
+        settings.conditions.closures=[...(settings.conditions.closures||[]),point.block.id];
+    }else{
+        if((settings.conditions.potholes||[]).some(p=>Math.hypot(p.x-point.x,p.z-point.z)<2))return toast('A pothole already occupies that spot. Choose another blue road location.');
+        settings.conditions.potholes=[...(settings.conditions.potholes||[]),{id:crypto.randomUUID(),x:point.x,z:point.z,intersection:point.block.intersection}];
+    }
+    markDirty();scene?.setSettings(settings);renderConditions();
+    toast(kind==='closure'?point.block.name+' block closed at both ends.':'Large pothole placed. Nearby traffic slows down.');
+}
+function renderConditions(){
+    const list=$('#hazard-list');list.replaceChildren();
+    const entries=[...(settings.conditions.closures||[]).map(id=>({id,kind:'closures',name:(ROAD_BLOCKS.find(b=>b.id===id)?.name||'Road')+' · whole block'})),...(settings.conditions.potholes||[]).map((p,i)=>({id:p.id,kind:'potholes',name:'Pothole '+(i+1)}))];
+    for(const entry of entries){const li=document.createElement('li'),label=document.createElement('span'),button=document.createElement('button');label.textContent=entry.name;button.textContent='Remove';button.setAttribute('aria-label','Remove '+entry.name);button.onclick=()=>{if(gameMode||running)return;settings.conditions[entry.kind]=settings.conditions[entry.kind].filter(value=>(typeof value==='string'?value:value.id)!==entry.id);markDirty();scene?.setSettings(settings);renderConditions();};li.append(label,button);list.append(li);}
+    $('#clear-hazards').disabled=entries.length===0;
+}
+$('#add-pothole').onclick=()=>{chooseTool(null);setHazardTool(hazardTool==='pothole'?null:'pothole');};
+$('#add-closure').onclick=()=>{chooseTool(null);setHazardTool(hazardTool==='closure'?null:'closure');};
+$('#cancel-hazard').onclick=()=>setHazardTool(null);
+$('#clear-hazards').onclick=()=>{if(gameMode||running)return;settings.conditions.closures=[];settings.conditions.potholes=[];markDirty();scene?.setSettings(settings);renderConditions();};
+document.addEventListener('keydown',event=>{if(event.key==='Escape'&&hazardTool)setHazardTool(null);});
+
+// Expanded navigation must never cover the challenge notice on narrow screens.
+new ResizeObserver(entries=>document.body.style.setProperty('--navigation-bottom',entries[0].target.getBoundingClientRect().bottom+'px')).observe($('.navigation-panel'));
+
+$('.scenario-banner').insertAdjacentHTML('beforeend','<div class="game-evaluation"><p id="game-score" role="status"></p><button id="test-design">Test my design</button><small>Modeled game accidents · paired seeded trials, not measured crashes. Traffic preview is illustrative.</small></div>');
+function gameTrials(upgrades,config,onProgress){
+    return new Promise((resolve,reject)=>{
+        const worker=new Worker(new URL('./game-worker.js',import.meta.url),{type:'module'});
+        const timer=setTimeout(()=>{worker.terminate();reject(new Error('Trial timeout'));},60000);
+        const finish=()=>{clearTimeout(timer);worker.terminate();};
+        worker.onerror=event=>{finish();reject(new Error(event.message));};
+        worker.onmessage=({data})=>{if(data.error){finish();reject(new Error(data.error));}else if(data.done){finish();resolve(data);}else onProgress?.(data);};
+        worker.postMessage({items:upgrades,settings:config,visible:!!onProgress});
+    });
+}
+$('#test-design').onclick=async()=>{
+    if(running||!gameBaseline)return;
+    running=true;$('#test-design').disabled=true;chooseTool(null);openPanel(null);
+    scene?.startSimulation();if(paused)$('#pause').click();
+    try {
+        const next=await gameTrials(items,settings,progress=>{
+            $('#game-score').textContent=`Testing ${progress.completed}/${settings.runs} trials · ${progress.accidents} modeled accidents so far · baseline ${gameBaseline.accidents}`;
+        });
+        const saved=gameBaseline.accidents-next.accidents;
+        const improvement=gameBaseline.accidents?Math.round(saved/gameBaseline.accidents*100):0;
+        const score=Math.max(0,Math.min(100,improvement));
+        result=next.result;result.score=score;displayResult(result);
+        $('#game-score').textContent=`Baseline ${gameBaseline.accidents} → Your design ${next.accidents} modeled accidents · ${saved} prevented (${improvement}%) · Score ${score}/100`;
+    } catch(error){$('#game-score').textContent='Test failed: '+error.message+'. Try again.';}
+    finally{running=false;$('#test-design').disabled=false;}
+};

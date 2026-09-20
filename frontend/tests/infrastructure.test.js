@@ -50,3 +50,15 @@ test('crossings are perpendicular to each mapped approach and reach both sidewal
   const center=roadPoint(map.features,anchor.name,anchor.axis,anchor.coordinate);assert.ok(Math.hypot(anchor.x-center.x,anchor.z-center.z)<1e-6);disposeUpgrade(mesh);
  }
 });
+
+test('all signal lenses face out of the intersection along their approach road',()=>{
+ for(const site of INTERSECTIONS)for(const zone of APPROACHES){
+  const anchor=placementFor('signal',zone,site.id),group=createUpgrade('signal',zone,{intersection:site.id});
+  const lamp=group.children.find(child=>child.userData.signalIndex===0);
+  const face=lamp.getWorldPosition(new THREE.Vector3()).sub(group.position);face.y=0;face.normalize();
+  const outward=new THREE.Vector3(anchor.x-site.origin[0],0,anchor.z-site.origin[1]);
+  assert.ok(face.dot(outward)>0,site.name+' '+zone+' must face away from center');
+  assert.ok(Math.abs(face.x*Math.cos(anchor.angle)-face.z*Math.sin(anchor.angle))<1e-9,'face follows road tangent');
+  disposeUpgrade(group);
+ }
+});

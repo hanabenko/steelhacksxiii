@@ -30,7 +30,7 @@ export function createNavigation({orthographic,controls,element,getOrigin,onCame
   const stopLook=()=>look=null;listen(element,'pointerup',stopLook);listen(element,'pointercancel',stopLook);
   listen(element,'wheel',event=>{if(mode!=='street')return;event.preventDefault();wheelTravel=THREE.MathUtils.clamp(wheelTravel-event.deltaY*.025,-30,30);},{passive:false});
   const vectors={forward:[1,0,0],back:[-1,0,0],left:[0,-1,0],right:[0,1,0],up:[0,0,1],down:[0,0,-1]};
-  return {setMode,resize,get mode(){return mode;},hold(action,active){active?held.add(action):held.delete(action);},nudge(action){move(...vectors[action],mode==='street'?5:20);},
+  return {setMode,resize,setHeading(angle){yaw=angle;street.rotation.set(pitch,yaw,0,'YXZ');element.dataset.cameraRotation=String(angle*180/Math.PI);},get mode(){return mode;},hold(action,active){active?held.add(action):held.delete(action);},nudge(action){move(...vectors[action],mode==='street'?5:20);},
     update(dt){if(typing())clear();if(mode==='street'&&Math.abs(wheelTravel)>.001){const travel=wheelTravel*(1-Math.exp(-dt*10));move(Math.sign(travel),0,0,Math.abs(travel));wheelTravel-=travel;}const active=action=>held.has(action);move((keys.has('w')||active('forward')?1:0)-(keys.has('s')||active('back')?1:0),(keys.has('d')||active('right')?1:0)-(keys.has('a')||active('left')?1:0),(keys.has('e')||active('up')?1:0)-(keys.has('q')||active('down')?1:0),dt*(mode==='street'?14:65)*(keys.has('shift')?3:1));element.dataset.cameraPosition=camera.position.toArray().map(n=>n.toFixed(2)).join(',');},
     dispose(){events.abort();}
   };

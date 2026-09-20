@@ -36,6 +36,13 @@ export function createUpgrade(type, zone, { preview = false, intersection = DEFA
     group.add(object); return object;
   }
   const box = (w,h,d,x,y,z,color) => mesh(new THREE.BoxGeometry(w,h,d,['bike','diet'].includes(type)?Math.max(1,Math.ceil(w/2)):1),color,x,y,z);
+  if(type==='closure'){
+    for(let z=-anchor.width/2+1;z<anchor.width/2;z+=2){
+      box(.7,.18,1.9,0,.25,z,'#535a62');box(.28,1.2,1.85,0,.95,z,'#fff5e8');
+      for(let stripe=-.65;stripe<=.65;stripe+=.65)box(.31,.75,.3,0,1,z+stripe,'#f57b26');
+    }
+  }
+  if(type==='repair')box(6,.04,anchor.width-1,0,.17,0,'#53565b');
   if (type === 'crosswalk') {
     const span=anchor.width+1;
     box(3.5,.25,span,0,.24,0,'#e4d9bd');

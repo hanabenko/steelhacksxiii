@@ -157,3 +157,19 @@ Markings and avenue-name meshes follow OSM centerlines, including curves. Crossw
 The checked-in OSM XML supplies bench, bicycle-parking, bin and PRT-stop coordinates. Shelter and bench tags determine existing stop amenities; absent shelter tags are not treated as confirmed shelters. Additional buildable shelters are proposed design interventions. Vehicle types include cars, bicycles and stylized PRT buses, with type-specific lengths and speeds. Buses brake and dwell at nearby mapped stops; fleet mix and dwell times are assumptions, not a GTFS timetable.
 
 `src/data/oakland-costs.json` records Oakland, Pittsburgh sources, review date, published cost bands and the reported $110,000 Terrace/DeSoto project total. The public sources found do **not** publish unit bid prices for the five tools. Individual amounts remain labeled planning allowances, not local contractor quotations; the project total is a contextual benchmark, not divided into invented unit rates. The cost-source dialog and scenario export retain this distinction. Construction estimates require project-specific scope, drainage, utility, accessibility and procurement information.
+
+## Pedestrian safety in the live preview
+
+Bicycle wheels roll around fixed axles using actual traveled distance, with spokes, a triangular frame and articulated pedaling. Pedestrians swing limbs from their joints, watch traffic, and wait for a clear vehicle corridor before continuing. Drivers brake for people in their path. These gap and braking rules are illustrative.
+
+Swept vehicle/pedestrian contact records one preview accident per injured pedestrian, stops the involved vehicle, animates a fall and leaves a small blood mark that fades. Injured pedestrians and marks clear after 14 preview seconds; pause and playback speed apply. The navigation panel shows the session's pedestrian accident count. This observed preview counter is separate from Monte Carlo risk proxies and does not alter their score or forecasts.
+
+## Play challenges and free simulation
+
+The app opens in free simulation. The yellow **Run simulation** button opens settings without executing trials or changing values. Set demand, green time, AV share, weather, closed approach, pothole location, starting hour, day/night cycling, and a custom budget. **Edit streets** opens infrastructure tools; the panel's Run simulation button executes paired trials.
+
+**Play** replaces the bottom button with Design / Simulate / Impact and reveals campus navigation. A random rainy commute, thunderstorm, construction closure, or pothole challenge fixes the environment, demand, timing, AV share and a $60k/$80k/$100k budget. New challenge resets that challenge's design. Exit game restores the prior free-simulation design and settings. Fixed scenario hazards cannot be removed with Undo; matching pothole repairs resolve the pothole.
+
+Construction barriers ($4,000 planning allowance) and pothole repairs ($8,000 planning allowance) can be placed like other infrastructure. Closures stop and queue approaching preview vehicles; they do not compute alternative routes. Weather reduces preview speed and surrogate capacity and increases the assumed conflict proxy. A pothole slows nearby vehicles; matching repairs remove that penalty. Weather and road hazards affect both baseline and redesigned trials; placed barriers affect the redesign. These coefficients and prices are illustrative assumptions, not observed Pittsburgh weather, engineering estimates or calibrated SUMO results.
+
+Running starts a looping lighting clock (30 simulated seconds per hour). Pause freezes it; 1× / 10× / 100× accelerates the preview and clock. Weather particles and storm lighting show the selected weather. The day/night cycle is visual; it does not claim a calibrated nighttime crash-risk model. Preview motion uses bounded traffic substeps; the network surrogate still does not model rerouting or cross-intersection queue spillback.

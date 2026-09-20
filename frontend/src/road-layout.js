@@ -19,7 +19,14 @@ export function roadAnchor(type,zone,intersection){
   const lane=type==='bike'?width/2-1.4:type==='diet'?-width/2+1.8:['curb','signal','shelter'].includes(type)?sign*(width/2+(type==='signal'?1.4:type==='shelter'?2:0)):0;
   const point=roadPoint(map.features,name,axis,coordinate,lane);
   if(!point)throw new Error('Missing road geometry for '+name);
-  return {...point,rotation:point.angle-Math.PI/2,axis,name,width,coordinate,lane};
+  let rotation=point.angle-Math.PI/2;
+  if(type==='signal'){
+    // Signal lenses point along the road, outward toward approaching drivers.
+    let dx=Math.sin(point.angle),dz=Math.cos(point.angle);
+    if(dx*(point.x-site.origin[0])+dz*(point.z-site.origin[1])<0){dx=-dx;dz=-dz;}
+    rotation=Math.atan2(dz,-dx); // The signal model's lens face is local -X.
+  }
+  return {...point,rotation,axis,name,width,coordinate,lane};
 }
 export function sampleAnchor(anchor,along=0,across=0){
   const component=anchor.axis==='x'?Math.sin(anchor.angle):Math.cos(anchor.angle);

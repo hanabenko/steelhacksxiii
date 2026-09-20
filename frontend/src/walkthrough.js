@@ -24,9 +24,10 @@ export function createWalkthrough({openPanel,getState}) {
     if(data.panel==='design')document.querySelector('.keyboard-placement').open=true;
     card.hidden=false;document.body.classList.add('tour-active');card.dataset.step=String(step);
     $('#tour-progress').textContent=`QUICK START · ${step+1} OF ${steps.length}`;
-    $('#tour-title').textContent=data.title;$('#tour-body').textContent=data.body;
+    $('#tour-title').textContent=step===1?'Your budget is '+new Intl.NumberFormat('en-US',{style:'currency',currency:'USD',maximumFractionDigits:0}).format(getState().budget??100000):data.title;$('#tour-body').textContent=data.body;
     $('#tour-back').disabled=step===0;$('#tour-next').textContent=step===steps.length-1?'Finish tour ✓':'Next →';
-    highlight=document.querySelector(data.target);highlight?.classList.add('tour-highlight');
+    if(step===3&&document.body.dataset.mode==='game')$('#tour-body').textContent='The original street baseline is ready. Click Test my design to watch the paired trials and compare modeled accidents. Conditions stay fixed for a fair comparison.';
+    highlight=document.querySelector(step===3&&document.body.dataset.mode==='game'?'#test-design':data.target);highlight?.classList.add('tour-highlight');
     requestAnimationFrame(()=>highlight?.scrollIntoView({block:'nearest',behavior:'instant'}));
     refresh();$('#tour-title').tabIndex=-1;$('#tour-title').focus({preventScroll:true});
   }

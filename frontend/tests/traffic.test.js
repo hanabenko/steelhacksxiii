@@ -52,3 +52,14 @@ test('pedestrians retreat on the sidewalk, wait, respect pause, and resume after
  assert.ok(person.p>waiting+1);assert.equal(person.reacting,false);
  const far={p:-70};updatePedestrianReaction(far,1,1,{x:-70,z:9},incident);assert.equal(far.reacting,false);assert.ok(far.p> -70);
 });
+
+import {detourRoute,makeRoute} from '../src/traffic.js';
+test('hazard detours join a clear forward lane and reject blocked alternatives',()=>{
+ const line=(id,z)=>makeRoute(id,Array.from({length:101},(_,x)=>({x:x*2,z})),'x');
+ const route=line('original',0),alternative=line('other',4),vehicle={route,s:0};
+ const pothole={x:50,z:0};
+ const detour=detourRoute(vehicle,[route,alternative],[pothole]);
+ assert.ok(detour);assert.equal(detour.id,'other');assert.equal(poseAt(detour,detour.length).z,4);
+ assert.equal(detourRoute(vehicle,[route,alternative],[pothole,{x:50,z:4}]),null);
+ assert.equal(detourRoute(vehicle,[route],[pothole]),null);
+});

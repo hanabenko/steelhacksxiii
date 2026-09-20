@@ -1,7 +1,5 @@
-async function buildTool(page,type){const design=page.locator('button[data-panel="design"]');if(await design.getAttribute('aria-expanded')!=='true')await design.click();return page.locator('[data-quick-tool="'+type+'"]');}
+import {buildTool,openPanel,switchPanel,enterGame} from './ui-helpers.js';
 import { test, expect } from '@playwright/test';
-async function openPanel(page,name){const button=page.locator('button[data-panel="'+name+'"]');if(await button.getAttribute('aria-expanded')!=='true')await button.click();if(name==='design'&&!await page.locator('.keyboard-placement').evaluate(el=>el.open))await page.locator('.keyboard-placement>summary').click();}
-
 test('renders real geometry with an operational WebGL canvas',async({page})=>{
   const errors=[];page.on('pageerror',e=>errors.push(e.message));
   await page.goto('/');
@@ -10,7 +8,7 @@ test('renders real geometry with an operational WebGL canvas',async({page})=>{
   expect(bounds.x).toBe(0);expect(bounds.y).toBe(0);expect(bounds.width).toBe(1440);expect(bounds.height).toBe(1050);
   await expect(page.locator('#design-panel')).not.toBeVisible();
   await expect(page.locator('#scene canvas')).toBeVisible();
-  await expect(page.locator('.location-icon svg')).toBeVisible();
+  await expect(page.locator('.location-bar')).toHaveCount(0);await expect(page.locator('#play-mode')).toBeVisible();
   await expect(page.locator('[data-lucide]:not(svg)')).toHaveCount(0);
   await page.getByRole('button',{name:'Top down'}).click();
   await expect(page.locator('#view-top')).toHaveClass('selected');
@@ -31,8 +29,8 @@ test('complete keyboard-accessible design, simulation, undo, and reset',async({p
   await openPanel(page,'design');await page.locator('[data-tool="curb"]').click();
   await page.locator('[data-intersection="pitt-forbes-bigelow"][data-zone="east"]').click();
   await expect(page.locator('#budget')).toHaveText('$70,000');
-  await openPanel(page,'simulation');await page.getByRole('button',{name:'Run simulation',exact:true}).click();
-  await expect(page.locator('#result-status')).toHaveText('100 RUNS');
+  await openPanel(page,'simulation');await page.locator('#test-design').click();
+  await expect(page.locator('#result-status')).toHaveText('100 RUNS',{timeout:15000});
   await expect(page.locator('#score')).not.toContainText('—');
   await expect(page.locator('#after-risk')).not.toHaveText('—');
   await page.getByRole('button',{name:'Compare with original',exact:true}).click();
@@ -44,22 +42,19 @@ test('complete keyboard-accessible design, simulation, undo, and reset',async({p
   await expect(page.locator('#budget')).toHaveText('$100,000');
   await expect(page.locator('#undo')).toBeDisabled();
 });
-test('budget constraint is visible and export contains the scenario',async({page})=>{
+test('budget constraint is visible and export is absent',async({page})=>{
   await page.goto('/');
   await openPanel(page,'design');await page.locator('[data-tool="diet"]').click();
   for(const zone of ['North','East','South','West'])await page.locator('[data-intersection="pitt-forbes-bigelow"][data-zone="'+zone.toLowerCase()+'"]').click();
   await expect(page.locator('#budget')).toHaveText('$16,000');
   await expect(page.locator('#toast')).toContainText('Not enough budget');
-  const downloaded=page.waitForEvent('download');
-  await page.getByRole('button',{name:'Export scenario'}).click();
-  const download=await downloaded;
-  const stream=await download.createReadStream();let content='';for await(const chunk of stream)content+=chunk;
-  const scenario=JSON.parse(content);expect(scenario.spent).toBe(84000);expect(scenario.upgrades).toHaveLength(3);expect(scenario.intersection).toBe('pitt-campus-network');
+  await expect(page.getByRole('button',{name:'Export scenario'})).toHaveCount(0);
+  await page.locator('#placed-summary').click();await expect(page.locator('#placed-list li')).toHaveCount(3);
 });
 test('settings invalidate results and provenance remains accessible',async({page})=>{
-  await page.goto('/');await openPanel(page,'simulation');await page.locator('#run').click();await expect(page.locator('#result-status')).toHaveText('100 RUNS');
-  await openPanel(page,'simulation');await page.locator('#av').fill('50');await expect(page.locator('#av-value')).toHaveText('50%');await expect(page.locator('#compare')).toBeDisabled();
-  await page.getByRole('button',{name:'Explore the data'}).click();await expect(page.getByRole('dialog')).toContainText('OpenStreetMap');await expect(page.getByRole('dialog')).toContainText('No public crash counts');
+  await page.goto('/');await openPanel(page,'simulation');await (await page.locator('body').getAttribute('data-mode')==='game'?page.locator('#test-design'):page.locator('#run')).click();await expect(page.locator('#result-status')).toHaveText('100 RUNS',{timeout:15000});
+  await openPanel(page,'simulation');await page.locator('#demand').fill('1100');await expect(page.locator('#demand-value')).toHaveText('1100 veh/h');await expect(page.locator('#compare')).toBeDisabled();
+  await page.getByRole('button',{name:'Data sources & model limits'}).click();await expect(page.getByRole('dialog')).toContainText('OpenStreetMap');await expect(page.getByRole('dialog')).toContainText('No public crash counts');
   await page.keyboard.press('Escape');await expect(page.getByRole('dialog')).not.toBeVisible();
 });
 test('mobile layout stays inside viewport and supports tool placement',async({page})=>{
@@ -92,7 +87,7 @@ test('editing and simulations remain usable when WebGL is unavailable',async({pa
   await page.addInitScript(()=>{const original=HTMLCanvasElement.prototype.getContext;HTMLCanvasElement.prototype.getContext=function(type,...args){return type.startsWith('webgl')?null:original.call(this,type,...args);};});
   await page.goto('/');await expect(page.getByText('3D view is unavailable')).toBeVisible();
   await openPanel(page,'design');await page.locator('[data-tool="bike"]').click();await page.locator('[data-intersection="pitt-forbes-bigelow"][data-zone="east"]').click();
-  await expect(page.locator('#budget')).toHaveText('$76,000');await openPanel(page,'simulation');await page.locator('#run').click();await expect(page.locator('#result-status')).toHaveText('100 RUNS');
+  await expect(page.locator('#budget')).toHaveText('$76,000');await openPanel(page,'simulation');await (await page.locator('body').getAttribute('data-mode')==='game'?page.locator('#test-design'):page.locator('#run')).click();await expect(page.locator('#result-status')).toHaveText('100 RUNS',{timeout:15000});
 });
 
  test('panels toggle, close with Escape, and return focus without shrinking the scene',async({page})=>{
@@ -104,7 +99,7 @@ test('editing and simulations remain usable when WebGL is unavailable',async({pa
      expect(await page.locator('#scene canvas').boundingBox()).toEqual(original);
      await page.keyboard.press('Escape');
      await expect(page.locator('#'+name+'-panel')).not.toBeVisible();
-     await expect(page.locator('button[data-panel="'+name+'"]')).toBeFocused();
+     await expect(page.locator('body')).toHaveAttribute('data-mode',/game|simulation/);await expect(page.locator('body[data-mode="game"] button[data-panel="'+name+'"],body[data-mode="simulation"] #quick-run')).toBeFocused();
    }
    await openPanel(page,'design');await openPanel(page,'simulation');
    await expect(page.locator('#design-panel')).not.toBeVisible();
@@ -120,7 +115,7 @@ test('walkthrough guides a real upgrade, budget, run, and comparison',async({pag
   await page.locator('[data-tool="crosswalk"]').click();await page.locator('[data-intersection="pitt-forbes-bigelow"][data-zone="east"]').click();
   await expect(page.locator('#budget-receipt')).toContainText('$12,000 spent');
   await expect(page.locator('#tour-next')).toBeEnabled();await page.locator('#tour-next').click();
-  await expect(page.locator('#tour-next')).toBeDisabled();await page.locator('#run').click();
+  await expect(page.locator('#tour-next')).toBeDisabled();await (await page.locator('body').getAttribute('data-mode')==='game'?page.locator('#test-design'):page.locator('#run')).click();
   await expect(page.locator('#tour-next')).toBeEnabled();await page.locator('#tour-next').click();
   await expect(page.locator('#tour-title')).toHaveText('See what changed');
   await expect(page.locator('#change-risk')).toHaveClass(/improved/);
@@ -133,7 +128,7 @@ test('signals advance with playback and stop when paused',async({page})=>{
   await page.goto('/');await expect(page.locator('#signal-penn')).toHaveAttribute('data-state','green');
   await openPanel(page,'simulation');await page.locator('#green').fill('20');
   await page.getByRole('button',{name:'Close simulation panel'}).click();
-  await page.locator('[data-speed="4"]').click();
+  await page.locator('[data-speed="10"]').click();
   await expect(page.locator('#signal-cross')).toHaveAttribute('data-state','green',{timeout:15000});
   await page.getByRole('button',{name:'Pause animation'}).click();
   await expect(page.locator('#signal-countdown')).toHaveText('Paused');
@@ -154,7 +149,7 @@ test('mobile walkthrough can be completed without covering required controls',as
   await page.getByRole('button',{name:'Start walkthrough'}).click();
   await page.locator('#tour-next').click();await page.locator('#tour-next').click();
   await page.locator('[data-tool="crosswalk"]').click();await page.locator('[data-intersection="pitt-forbes-bigelow"][data-zone="west"]').click();
-  await page.locator('#tour-next').click();await page.locator('#run').click();
+  await page.locator('#tour-next').click();await (await page.locator('body').getAttribute('data-mode')==='game'?page.locator('#test-design'):page.locator('#run')).click();
   await expect(page.locator('#tour-next')).toBeEnabled();await page.locator('#tour-next').click();
   await page.locator('#tour-next').click();
   await expect(page.locator('.walkthrough')).not.toBeVisible();
@@ -170,19 +165,19 @@ test('quick tray targets the crosswalk itself and launches a comparison',async({
   await card.dragTo(canvas,{targetPosition:{x:b.width/2+b.height*12/200,y:b.height/2}});
   await expect(page.locator('#budget-hud')).toHaveText('$88,000');
   await expect(page.locator('#design-panel')).toBeVisible();
-  await page.locator('#quick-run').click();
-  await expect(page.locator('#result-status')).toHaveText('100 RUNS');
+  await openPanel(page,'simulation');await (await page.locator('body').getAttribute('data-mode')==='game'?page.locator('#test-design'):page.locator('#run')).click();
+  await expect(page.locator('#result-status')).toHaveText('100 RUNS',{timeout:15000});
   await expect(page.locator('#after-risk')).not.toHaveText('—');
 });
 
 test('quick selection supports number keys, cancellation, and mobile controls',async({page})=>{
-  await page.setViewportSize({width:390,height:844});await page.goto('/');
+  await page.setViewportSize({width:390,height:844});await page.goto('/');await enterGame(page);
   await (await buildTool(page,'bike')).click();
   await expect(page.locator('[data-quick-tool="bike"]')).toHaveAttribute('aria-pressed','true');
   await page.keyboard.press('Escape');await expect(page.locator('#placement-hint')).not.toBeVisible();
   await page.keyboard.press('1');await expect(page.locator('[data-quick-tool="crosswalk"]')).toHaveAttribute('aria-pressed','true');
-  await page.keyboard.press('Escape');await page.locator('#quick-run').click();
-  await expect(page.locator('#result-status')).toHaveText('100 RUNS');
+  await page.keyboard.press('Escape');await openPanel(page,'simulation');await (await page.locator('body').getAttribute('data-mode')==='game'?page.locator('#test-design'):page.locator('#run')).click();
+  await expect(page.locator('#result-status')).toHaveText('100 RUNS',{timeout:15000});
   expect(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth)).toBe(true);
 });
 
@@ -203,16 +198,16 @@ test('observation mode hides every overlay and keeps orbit/zoom and restoration 
 });
 
 test('landmarks remain on the map while navigation replaces the removed overlays',async({page})=>{
- const errors=[];page.on('pageerror',e=>errors.push(e.message));await page.goto('/');
+ const errors=[];page.on('pageerror',e=>errors.push(e.message));await page.goto('/');await enterGame(page);
  await expect(page.locator('.campus-jumps,.preview-badge,[data-focus]')).toHaveCount(0);
  for(const id of ['cathedral','towers','jefes'])await expect(page.locator('[data-landmark="'+id+'"]')).toBeVisible();
- const navigation=await page.locator('.navigation-panel').boundingBox();expect(navigation.x).toBe(25);expect(navigation.y).toBe(190);
- await page.setViewportSize({width:390,height:844});await page.reload();const mobile=await page.locator('.navigation-panel').boundingBox();expect(mobile.x).toBe(13);expect(mobile.y).toBe(155);
+ const navigation=await page.locator('.navigation-panel').boundingBox();expect(navigation.x).toBe(25);expect(navigation.y).toBe(110);
+ await page.setViewportSize({width:390,height:844});await page.reload();await enterGame(page);const mobile=await page.locator('.navigation-panel').boundingBox();expect(mobile.x).toBe(13);expect(mobile.y).toBe(86);
  await page.locator('#observe-toggle').click();await expect(page.locator('.navigation-panel')).not.toBeVisible();await page.locator('#observe-toggle').click();await expect(page.locator('.navigation-panel')).toBeVisible();expect(errors).toEqual([]);
 });
 
 test('corner observation toggle dismisses native dialogs and walkthroughs',async({page})=>{
-  await page.goto('/');await page.getByRole('button',{name:'Explore the data'}).click();
+  await page.goto('/');await openPanel(page,'simulation');await page.getByRole('button',{name:'Data sources & model limits'}).click();
   await expect(page.getByRole('dialog')).toBeVisible();await page.locator('#observe-toggle').click();
   await expect(page.getByRole('dialog')).not.toBeVisible();await expect(page.locator('body')).toHaveClass(/observe-mode/);
   await page.locator('#observe-toggle').click();await page.getByRole('button',{name:'Start walkthrough'}).click();
@@ -231,19 +226,17 @@ test('three intersections keep separate placements and produce combined and per-
  await expect(page.locator('#budget')).toHaveText('$64,000');
  await page.locator('#placed-summary').click();await expect(page.locator('#placed-list li')).toHaveCount(3);
  await expect(page.locator('#placed-list')).toContainText('Fifth × Bigelow');await expect(page.locator('#placed-list')).toContainText('Forbes × Bouquet');
- await openPanel(page,'simulation');await page.locator('#run').click();await expect(page.locator('#result-status')).toHaveText('100 RUNS');
+ await openPanel(page,'simulation');await (await page.locator('body').getAttribute('data-mode')==='game'?page.locator('#test-design'):page.locator('#run')).click();await expect(page.locator('#result-status')).toHaveText('100 RUNS',{timeout:15000});
  await expect(page.locator('#result-scope')).toHaveValue('network');
  const combined=Number(await page.locator('#after-throughput').textContent());
  await page.locator('#result-scope').selectOption('pitt-fifth-bigelow');
  await expect(page.locator('#aggregation-note')).toContainText('Fifth × Bigelow');
  expect(combined).toBeGreaterThan(2*Number(await page.locator('#after-throughput').textContent()));await expect(page.locator('#change-risk')).toHaveClass(/improved/);
- const downloaded=page.waitForEvent('download');await page.getByRole('button',{name:'Export scenario'}).click();const stream=await(await downloaded).createReadStream();let content='';for await(const chunk of stream)content+=chunk;const exported=JSON.parse(content);
- expect(new Set(exported.upgrades.map(i=>i.intersection)).size).toBe(3);expect(exported.result.intersections).toHaveLength(3);
  await openPanel(page,'design');await page.getByRole('button',{name:'Remove Raised crosswalk from north at Fifth × Bigelow'}).click();await expect(page.locator('#budget')).toHaveText('$76,000');await expect(page.locator('#result-scope')).toBeDisabled();
 });
 
 test('street navigation moves while traffic is paused and while interface is hidden',async({page})=>{
- await page.goto('/');await page.getByRole('button',{name:'Pause animation'}).click();
+ await page.goto('/');await enterGame(page);await page.getByRole('button',{name:'Pause animation'}).click();
  await page.locator('button[data-navigation="street"]').click();const canvas=page.locator('#scene canvas');await expect(canvas).toHaveAttribute('data-navigation','street');
  const position=()=>canvas.getAttribute('data-camera-position');const before=await position();await page.keyboard.down('w');await expect.poll(position).not.toBe(before);await page.keyboard.up('w');
  await page.locator('#observe-toggle').click();const hiddenBefore=await position();await page.keyboard.down('d');await expect.poll(position).not.toBe(hiddenBefore);await page.keyboard.up('d');
@@ -254,7 +247,7 @@ test('street navigation moves while traffic is paused and while interface is hid
 });
 
 test('mobile free navigation and on-screen movement remain reachable',async({page})=>{
- await page.setViewportSize({width:390,height:844});await page.goto('/');await expect(page.locator('[data-intersection-picker]')).toHaveCount(0);
+ await page.setViewportSize({width:390,height:844});await page.goto('/');await enterGame(page);await expect(page.locator('[data-intersection-picker]')).toHaveCount(0);
  await page.locator('.navigation-panel summary').click();await page.locator('button[data-navigation="street"]').click();
  const canvas=page.locator('#scene canvas');const before=await canvas.getAttribute('data-camera-position');await page.getByRole('button',{name:'Move forward',exact:true}).focus();await page.keyboard.press('Enter');await expect.poll(()=>canvas.getAttribute('data-camera-position')).not.toBe(before);
  await page.locator('#observe-toggle').click();await page.locator('#observe-toggle').click();expect(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth)).toBe(true);
